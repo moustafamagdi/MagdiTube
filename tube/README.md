@@ -58,3 +58,35 @@ hostname to phone-only account navigation. No wildcard country domains, no
 change to the YouTube-only ad filter or cookie storage. Car account navigation
 remains blocked and HTTP remains blocked. Build/lint validation does not prove
 successful completion of the user's authentication; retry on phone is required.
+
+## 0.1.8-playback-preview
+- Implement WebChromeClient custom-view fullscreen with an Exit overlay and Back
+  handling. Hides the app toolbar; the Android Auto system bar remains host-owned.
+  Phone system bars can be hidden during fullscreen and normal insets restored.
+- Add an explicit Search control. In the car this uses an in-app Arabic/English
+  keyboard and URL-encoded YouTube results; use this instead of the site's search
+  icon when the host IME is unavailable. Queries are never logged. Phone uses IME.
+- Background audio defaults ON, configurable on phone. Temporary window coverage
+  no longer explicitly pauses WebView. A mediaPlayback foreground service with
+  Stop notification and media session is maintained while playback is observed.
+  Temporary audio-focus loss pauses and gain requests resume; permanent loss stops.
+  Notifications permission is requested on phone for the Stop control.
+- No background survival guarantee: WebView/site/host may still pause media, and
+  activity destruction, disconnection or process termination releases playback.
+  The WebView remains active, so background audio can consume more battery.
+
+Validation: signed release build and lint passed (0 errors). Five Robolectric
+Android API 32 tests cover fullscreen restoration, search encoding and dismissal,
+covered-view behavior and audio-focus callbacks. Existing ad-filter JS tests pass.
+These are simulated component tests, not an actual YouTube/car streaming test.
+No phone was connected for DHU testing. A local Android emulator startup attempt
+exited before device registration. Honda reverse-camera/audio behavior, actual
+YouTube fullscreen and keyboard rendering remain user-test items.
+
+Device checklist: update without uninstalling; allow notifications; play a video,
+use its fullscreen button, then Exit/Back; use app Search to type Arabic/English;
+while parked switch to the car camera and return, checking playback/time; switch
+away and check audio/Stop notification. Export the log if playback pauses.
+
+References: https://developer.android.com/reference/android/webkit/WebChromeClient
+and https://developer.android.com/about/versions/14/changes/fgs-types-required
