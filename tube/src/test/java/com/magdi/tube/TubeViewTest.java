@@ -62,5 +62,15 @@ public class TubeViewTest {
   try{PlaybackService.keep(view);PlaybackService.keep(second);assertEquals(before,first.getLastEvaluatedJavascript());}
   finally{second.close();}
  }
+
+ @Test public void carSessionSurvivesHostReplacement(){
+  Object first=new Object(),second=new Object();
+  TubeView retained=CarPlaybackSession.attach(activity,first);
+  CarPlaybackSession.detach(first);
+  assertSame(retained,CarPlaybackSession.attach(activity,second));
+  CarPlaybackSession.detach(first); // An old host must not detach the new one.
+  assertSame(retained,CarPlaybackSession.attach(activity,second));
+  CarPlaybackSession.detach(second);CarPlaybackSession.stopDetached();
+ }
  private Button button(View root,String label){if(root instanceof Button&&label.contentEquals(((Button)root).getText()))return (Button)root;if(root instanceof ViewGroup){ViewGroup group=(ViewGroup)root;for(int i=0;i<group.getChildCount();i++){Button match=button(group.getChildAt(i),label);if(match!=null)return match;}}return null;}
 }

@@ -14,6 +14,8 @@ public final class TubeView extends LinearLayout {
  private final Button back;
  private final android.os.Handler timer=new android.os.Handler(android.os.Looper.getMainLooper());
  private boolean active, closed, background;
+ private boolean interruption, pendingResume;
+ private long detachedIdleSince;
  private FrameLayout fullscreen;
  private WebChromeClient.CustomViewCallback fullscreenCallback;
  private final java.util.Map<View,Integer> hiddenViews=new java.util.HashMap<>();
@@ -21,10 +23,16 @@ public final class TubeView extends LinearLayout {
  private long lastVideoLog;
  private final Runnable sample=new Runnable(){public void run(){
   if(closed)return;
-  if(!accountPage)web.evaluateJavascript("(function(){var v=document.querySelector('video');return JSON.stringify({playing:!!v&&!v.paused&&!v.ended,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,muted:v?v.muted:false});})()",value->{
+  android.media.AudioManager am=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+  boolean call=am.getMode()!=android.media.AudioManager.MODE_NORMAL;
+  if(call&&!interruption){interruption=true;coverPlayback();Diagnostics.event("Audio mode interruption started");}
+  else if(!call&&interruption){interruption=false;tryResumePlayback();Diagnostics.event("Audio mode interruption ended");}
+  if(!accountPage)web.evaluateJavascript("(function(){var v=document.querySelector('video');return JSON.stringify({playing:!!v&&!v.paused&&!v.ended,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,muted:v?v.muted:false,resumeWanted:window.__magdiPlayback?window.__magdiPlayback.state().wanted:false});})()",value->{
    if(closed)return;
    try{String json=new org.json.JSONArray("["+value+"]").getString(0);org.json.JSONObject state=new org.json.JSONObject(json);
-    if(state.optBoolean("playing")&&background)PlaybackService.keep(TubeView.this);else PlaybackService.idle(TubeView.this);
+    if(!state.optBoolean("resumeWanted"))pendingResume=false;
+    if(state.optBoolean("playing")&&background)PlaybackService.keep(TubeView.this);else if(!pendingResume&&!interruption)PlaybackService.idle(TubeView.this);
+    if(!active&&getParent()==null&&!state.optBoolean("playing")){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
     if(android.os.SystemClock.elapsedRealtime()-lastVideoLog>15000){Diagnostics.event("Playback visible="+active+" "+json);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
    }catch(org.json.JSONException ignored){}
   });
@@ -50,6 +58,7 @@ public final class TubeView extends LinearLayout {
  status=new TextView(c);status.setTextColor(0xffffcf8a);status.setPadding(dp(12),dp(6),dp(12),dp(6));status.setVisibility(GONE);addView(status);
  web=new WebView(c){@Override protected void onWindowVisibilityChanged(int visibility){
  // Preserve the existing media document during a temporary host cover (for example reverse camera).
+ if(visibility!=View.VISIBLE&&background&&!closed)coverPlayback();
  super.onWindowVisibilityChanged(background&&!closed&&!accountPage?View.VISIBLE:visibility);
  }};web.setBackgroundColor(Color.BLACK);addView(web,new LinearLayout.LayoutParams(-1,0,1));
  CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
@@ -67,7 +76,7 @@ public final class TubeView extends LinearLayout {
  boolean block=!allowed(uri)&&!(phone&&"https".equals(uri.getScheme())&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));status.setVisibility(VISIBLE);CookieManager.getInstance().flush();}return block;
  } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){accountPage=!allowed(Uri.parse(u));if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
- public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookieManager.getInstance().flush();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookies flushed");if(!accountPage)AdAssist.apply(v);}
+ public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookieManager.getInstance().flush();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookies flushed");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
  public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame()){Diagnostics.event("Main frame error code="+e.getErrorCode());status.setText(ar?"تعذر الاتصال. تحقق من الإنترنت واضغط تحديث.":"Unable to connect. Check your internet and tap Reload.");status.setVisibility(VISIBLE);}}
  });
  back.setEnabled(false);back.setOnClickListener(v->handleBack());
@@ -98,9 +107,23 @@ public final class TubeView extends LinearLayout {
  }
  static boolean allowed(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&h!=null&&(h.equals("youtube.com")||h.endsWith(".youtube.com")||h.equals("youtu.be"));}
 
- void pause(){active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
- void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");}
- void pauseMedia(){web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
+ void pause(){if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
+ void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");web.postDelayed(()->{if(!closed&&active)tryResumePlayback();},500);}
+ void pauseMedia(){pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
+
+ private void coverPlayback(){
+  if(web==null||closed||accountPage||!background)return;
+  pendingResume=true;
+  web.evaluateJavascript("window.__magdiPlayback?window.__magdiPlayback.cover():false",value->{if(!closed){pendingResume="true".equals(value);Diagnostics.event("Playback cover; resume intent="+pendingResume);}});
+ }
+ private void tryResumePlayback(){
+  if(closed||accountPage||!background||!pendingResume)return;
+  android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL||audio.isMusicActive()){Diagnostics.event("Resume deferred; audio is occupied");return;}
+  pendingResume=false;
+  web.evaluateJavascript("window.__magdiPlayback?window.__magdiPlayback.resume():'not-ready'",value->Diagnostics.event("Resume after interruption: "+value));
+ }
+ void prepareDetach(){pause();hideFullscreen();hideSearch();}
  boolean handleBack(){if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
  private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}}
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();}

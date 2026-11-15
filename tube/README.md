@@ -108,3 +108,26 @@ Background continuation is still experimental and depends on WebView/host behavi
 Regression tests check repeated service starts do not request focus or issue pause,
 second-view registration does not pause the first, and explicit Stop still pauses.
 No live phone/car test was possible for this hotfix; confirm on Honda while parked.
+
+## 0.1.10-resume-preview
+Experimental car-session retention: reuse one TubeView across replacement car
+activities, detach the old parent and rebind a mutable context. A detached paused
+session expires after five minutes; playing sessions remain until stopped/process
+exit. Notification Stop also releases a detached retained car session.
+
+Track page playback intent on play/pause/end, visibility and native cover events.
+On host return or an observed audio-mode interruption ending, request resume once
+only when the page reports prior playback intent, audio mode is NORMAL and no
+music is currently active. Manual visible pauses, recent pointer-associated pauses,
+ended videos and notification Stop cancel the intent. No competing audio focus
+or additional media session is introduced. Native WebView still handles ducking.
+Phone-call recovery is best effort: audio mode/visibility timing may vary; no
+telephony permission or guaranteed phone-call detection is claimed. Background
+WebView playback itself may still be suspended by YouTube/Android/host behavior.
+
+Tests: component tests cover session reuse plus existing fullscreen/search/no-focus
+regressions. JS tests cover cover/resume, single attempt, manual pause, Stop and end.
+Live camera/call/notification handling on Honda remains unverified. Test while parked:
+play, open camera and return; open another screen and return; manually pause then
+leave/return (must stay paused); test a notification and call. Export diagnostics
+immediately after an unexpected pause or unwanted resume.
