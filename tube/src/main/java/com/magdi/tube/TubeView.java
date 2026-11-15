@@ -21,6 +21,24 @@ public final class TubeView extends LinearLayout {
  private final java.util.Map<View,Integer> hiddenViews=new java.util.HashMap<>();
  private View searchPanel;
  private long lastVideoLog;
+ private final Runnable refreshPicture=()->refreshVideoSurface();
+ private void schedulePictureRefresh(){
+  if(closed||!active)return;
+  timer.removeCallbacks(refreshPicture);
+  timer.post(refreshPicture);timer.postDelayed(refreshPicture,250);timer.postDelayed(refreshPicture,900);
+ }
+ @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused&&web!=null)schedulePictureRefresh();}
+ @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(web!=null)schedulePictureRefresh();}
+ private void refreshVideoSurface(){
+  if(closed||!active||accountPage||searchPanel!=null||!isAttachedToWindow()||!isShown())return;
+  web.onResume();
+  View target=fullscreen!=null?fullscreen:web;
+  target.requestFocus();target.requestLayout();target.postInvalidateOnAnimation();
+  requestLayout();postInvalidateOnAnimation();
+  web.evaluateJavascript("(function(){window.dispatchEvent(new Event('resize'));requestAnimationFrame(()=>requestAnimationFrame(()=>{window.__magdiPictureRefresh=(window.__magdiPictureRefresh||0)+1;}));var v=document.querySelector('video');return JSON.stringify({hasVideo:!!v,paused:v?v.paused:null,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,hidden:document.hidden});})()",value->{if(!closed)Diagnostics.event("Picture refresh requested: "+value);});
+  web.postVisualStateCallback(android.os.SystemClock.uptimeMillis(),new WebView.VisualStateCallback(){public void onComplete(long id){if(!closed&&active){web.postInvalidateOnAnimation();if(fullscreen!=null)fullscreen.postInvalidateOnAnimation();Diagnostics.event("WebView visual state ready");}}});
+ }
+
  private final Runnable sample=new Runnable(){public void run(){
   if(closed)return;
   android.media.AudioManager am=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -107,8 +125,8 @@ public final class TubeView extends LinearLayout {
  }
  static boolean allowed(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&h!=null&&(h.equals("youtube.com")||h.endsWith(".youtube.com")||h.equals("youtu.be"));}
 
- void pause(){if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
- void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");web.postDelayed(()->{if(!closed&&active)tryResumePlayback();},500);}
+ void pause(){timer.removeCallbacks(refreshPicture);if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
+ void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");schedulePictureRefresh();web.postDelayed(()->{if(!closed&&active)tryResumePlayback();},500);}
  void pauseMedia(){pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
 
  private void coverPlayback(){
@@ -152,5 +170,5 @@ public final class TubeView extends LinearLayout {
   addView(panel,new LinearLayout.LayoutParams(-1,0,1));input.requestFocus();
   if(phone)input.postDelayed(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT),150);
  }
- void close(){closed=true;active=false;timer.removeCallbacks(sample);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
+ void close(){closed=true;active=false;timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
 }

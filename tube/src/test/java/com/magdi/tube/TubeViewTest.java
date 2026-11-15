@@ -72,5 +72,14 @@ public class TubeViewTest {
   assertSame(retained,CarPlaybackSession.attach(activity,second));
   CarPlaybackSession.detach(second);CarPlaybackSession.stopDetached();
  }
+
+ @Test public void pictureRefreshDoesNotPauseSeekOrReloadMedia() throws Exception {
+  activity.setContentView(view);view.resume();
+  java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
+  org.robolectric.shadows.ShadowWebView web=shadowOf((WebView)field.get(view));String url=web.getLastLoadedUrl();
+  java.lang.reflect.Method refresh=TubeView.class.getDeclaredMethod("refreshVideoSurface");refresh.setAccessible(true);refresh.invoke(view);
+  String js=web.getLastEvaluatedJavascript();assertTrue(js.contains("resize"));assertFalse(js.contains(".pause("));assertFalse(js.contains(".play("));assertFalse(js.contains("currentTime="));assertEquals(url,web.getLastLoadedUrl());
+  view.pause();String before=web.getLastEvaluatedJavascript();refresh.invoke(view);assertEquals(before,web.getLastEvaluatedJavascript());
+ }
  private Button button(View root,String label){if(root instanceof Button&&label.contentEquals(((Button)root).getText()))return (Button)root;if(root instanceof ViewGroup){ViewGroup group=(ViewGroup)root;for(int i=0;i<group.getChildCount();i++){Button match=button(group.getChildAt(i),label);if(match!=null)return match;}}return null;}
 }

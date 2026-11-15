@@ -131,3 +131,21 @@ Live camera/call/notification handling on Honda remains unverified. Test while p
 play, open camera and return; open another screen and return; manually pause then
 leave/return (must stay paused); test a notification and call. Export diagnostics
 immediately after an unexpected pause or unwanted resume.
+
+## 0.1.11-picture-fix
+User confirmed continuous audio during camera coverage in 0.1.10, but reported
+that the visible video frame freezes after return until a touch. This suggests
+render/focus restoration rather than a playback pause; not independently traced.
+
+On resume, window-focus gain and attachment, schedule a bounded picture refresh
+(immediate, 250 ms, 900 ms). Only runs while attached, shown and active, outside
+account/search pages. Resume WebView rendering, request view focus/layout/redraw,
+notify page resize, and request a WebView visual-state callback followed by redraw.
+Fullscreen container is refreshed too. No simulated taps, pause/play, seek, reload
+or audio-focus requests are used by this refresh path. Callbacks cancel on cover
+or destruction. Visual-state readiness does not prove video frames were presented.
+
+New component regression checks refresh sends no pause/play/seek/reload and does
+nothing while covered. Hardware-compositor recovery on Honda is UNVERIFIED.
+Test while parked: open camera and return without touching the player, in normal
+and fullscreen modes. If still frozen, export log before touching the player.
