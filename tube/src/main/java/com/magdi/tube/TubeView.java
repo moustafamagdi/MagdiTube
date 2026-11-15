@@ -125,7 +125,9 @@ public final class TubeView extends LinearLayout {
  Button audio=button(ar?"صوت الخلفية":"Background audio",ar?"تشغيل أو إيقاف صوت الخلفية":"Toggle background audio");
  audio.setOnClickListener(v->{background=!background;c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
  Button logs=button(ar?"تصدير اللوج":"Export log",ar?"مشاركة تقرير التشخيص":"Share diagnostic report");
- for(Button b:new Button[]{account,subscriptions,ads,audio,logs})actions.addView(b,new LinearLayout.LayoutParams(-2,dp(48)));
+ Button setup=button(ar?"إعداد Android Auto":"Android Auto setup",ar?"فحص وإعداد مصدر التثبيت":"Check and configure installation source");
+ setup.setOnClickListener(v->c.startActivity(new android.content.Intent(c,InstallSetupActivity.class)));
+ for(Button b:new Button[]{setup,account,subscriptions,ads,audio,logs})actions.addView(b,new LinearLayout.LayoutParams(-2,dp(48)));
  HorizontalScrollView scroller=new HorizontalScrollView(c);scroller.addView(actions);addView(scroller,1,new LinearLayout.LayoutParams(-1,dp(50)));
  account.setOnClickListener(v->new android.app.AlertDialog.Builder(c).setTitle(ar?"تسجيل دخول تجريبي":"Experimental sign-in").setMessage(ar?"تدخل بياناتك في صفحة Google. قد ترفض Google المتصفح المضمّن. لا نغيّر هوية المتصفح ولا نقرأ كلمات المرور. بعد النجاح افتح الاشتراكات، ثم تحديث على شاشة السيارة. لا تمسح بيانات التطبيق إن أردت الاحتفاظ بالجلسة.":"Enter your credentials only on Google's page. Google may reject this embedded browser. We do not change browser identity or read passwords. After success, check Subscriptions, then Reload on the car. Clearing app data removes the session.").setNegativeButton(ar?"إلغاء":"Cancel",null).setPositiveButton(ar?"متابعة":"Continue",(d,w)->{Diagnostics.event("Account flow opened on phone");web.loadUrl("https://m.youtube.com/signin");}).show());
  subscriptions.setOnClickListener(v->web.loadUrl("https://m.youtube.com/feed/subscriptions"));

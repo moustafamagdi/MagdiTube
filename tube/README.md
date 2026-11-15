@@ -171,3 +171,27 @@ Go and Close buttons to minimum widths of 112/96 dp and fullscreen Exit to 128 d
 All three use 18 sp text and 56 dp height; Exit has an 8 dp edge margin. Widths
 can expand for larger text. Playback behavior is unchanged. Build, lint and existing
 component tests are checked; the new sizing has not been viewed on the Honda.
+
+## 0.1.14-install-setup-preview
+Phone-only Android Auto setup opens Android's system installer for a user-confirmed
+self-reinstall of the currently installed, same-signed APK. Requests install permission
+through system settings. The APK is copied only from this app's sourceDir to a narrowly
+scoped cache FileProvider path; no download, root, Shizuku or silent installation.
+Split installs are rejected. App data is preserved by an in-place installation.
+
+Experimental classic installer metadata hints follow the approach documented by
+https://github.com/fcaronte/KingInstaller (independent implementation; no code copied).
+Android/OEM versions may ignore these hints. No guarantee of Android Auto acceptance.
+
+Diagnostics include current installer/initiator and lastUpdateTime, a persisted attempt
+baseline and before/after result, checked at process start, package replacement, setup
+open and export. A matching pre-existing source is explicitly distinguished from a
+new match; a dialog result alone never counts as success. Update timestamp evidence
+means replacement was observed, not proof of which installer performed it if another
+installation occurred in the meantime. A narrow known-initiator list is diagnostic,
+not Android Auto's official acceptance criteria. No claim of successful self-reinstall
+until tested on the user's Samsung. Playback logic remains unchanged.
+
+Validation: signed release build and lint passed; 14 component tests passed (5 setup
+checks and 9 playback/UI regressions). No connected phone was available; actual
+Samsung self-reinstallation and Android Auto acceptance remain unverified.
