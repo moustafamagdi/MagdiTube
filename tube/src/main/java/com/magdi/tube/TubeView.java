@@ -100,9 +100,7 @@ public final class TubeView extends LinearLayout {
 
  void pause(){active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
  void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");}
- void pauseForFocus(){web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);}
  void pauseMedia(){web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
- void playMedia(){if(!accountPage)web.evaluateJavascript("(function(){let v=document.querySelector('video');if(v)v.play().catch(()=>{});})()",null);}
  boolean handleBack(){if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
  private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}}
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();}

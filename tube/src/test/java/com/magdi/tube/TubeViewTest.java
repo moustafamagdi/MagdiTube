@@ -41,22 +41,26 @@ public class TubeViewTest {
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
   view.pause();assertFalse(shadowOf((WebView)field.get(view)).wasOnPauseCalled());
  }
- @Test public void transientAudioFocusResumesButPermanentLossStops() throws Exception {
+ @Test public void keepAliveDoesNotTakeAudioFocusOrPausePlayer() throws Exception {
+  java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
+  org.robolectric.shadows.ShadowWebView web=shadowOf((WebView)field.get(view));
+  String before=web.getLastEvaluatedJavascript();
   PlaybackService.keep(view);
   PlaybackService service=Robolectric.buildService(PlaybackService.class).create().get();
   try {
-   service.onStartCommand(new android.content.Intent(),0,1);
-   java.lang.reflect.Field focusField=PlaybackService.class.getDeclaredField("focus");focusField.setAccessible(true);
-   android.media.AudioFocusRequest focus=(android.media.AudioFocusRequest)focusField.get(service);
-   java.lang.reflect.Field webField=TubeView.class.getDeclaredField("web");webField.setAccessible(true);
-   org.robolectric.shadows.ShadowWebView web=shadowOf((WebView)webField.get(view));
-   shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest().listener.onAudioFocusChange(android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT);
-   assertTrue(web.getLastEvaluatedJavascript().contains("v.pause()"));
-   shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest().listener.onAudioFocusChange(android.media.AudioManager.AUDIOFOCUS_GAIN);
-   assertTrue(web.getLastEvaluatedJavascript().contains("v.play()"));
-   shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest().listener.onAudioFocusChange(android.media.AudioManager.AUDIOFOCUS_LOSS);
+   for(int i=0;i<3;i++){service.onStartCommand(new android.content.Intent(),0,i);PlaybackService.keep(view);}
+   assertNull(shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest());
+   assertEquals(before,web.getLastEvaluatedJavascript());
+   service.onStartCommand(new android.content.Intent().setAction("stop"),0,4);
    assertTrue(web.getLastEvaluatedJavascript().contains("v.pause()"));
   } finally {service.onDestroy();}
+ }
+ @Test public void secondViewRegistrationDoesNotPauseFirstView() throws Exception {
+  java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
+  org.robolectric.shadows.ShadowWebView first=shadowOf((WebView)field.get(view));String before=first.getLastEvaluatedJavascript();
+  TubeView second=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));
+  try{PlaybackService.keep(view);PlaybackService.keep(second);assertEquals(before,first.getLastEvaluatedJavascript());}
+  finally{second.close();}
  }
  private Button button(View root,String label){if(root instanceof Button&&label.contentEquals(((Button)root).getText()))return (Button)root;if(root instanceof ViewGroup){ViewGroup group=(ViewGroup)root;for(int i=0;i<group.getChildCount();i++){Button match=button(group.getChildAt(i),label);if(match!=null)return match;}}return null;}
 }

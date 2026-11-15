@@ -90,3 +90,21 @@ away and check audio/Stop notification. Export the log if playback pauses.
 
 References: https://developer.android.com/reference/android/webkit/WebChromeClient
 and https://developer.android.com/about/versions/14/changes/fgs-types-required
+
+## 0.1.9-playback-fix
+User reported fullscreen works but playback pauses after approximately two seconds.
+That matches the new playback polling interval. The 0.1.8 keep-alive service was
+requesting a second audio-focus owner and creating a second media session while
+WebView was already playing. This is the leading code-level explanation, not a
+confirmed device trace.
+
+Remove that extra audio-focus request/session and the automatic focus callbacks.
+WebView remains responsible for actual media focus and system interruptions.
+The service only maintains foreground priority and the explicit Stop notification.
+Multiple phone/car views are tracked without automatically pausing one another.
+Fullscreen, search keyboard, cookies, login and ad filtering remain unchanged.
+Background continuation is still experimental and depends on WebView/host behavior.
+
+Regression tests check repeated service starts do not request focus or issue pause,
+second-view registration does not pause the first, and explicit Stop still pauses.
+No live phone/car test was possible for this hotfix; confirm on Honda while parked.
