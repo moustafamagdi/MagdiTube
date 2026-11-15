@@ -81,5 +81,17 @@ public class TubeViewTest {
   String js=web.getLastEvaluatedJavascript();assertTrue(js.contains("resize"));assertFalse(js.contains(".pause("));assertFalse(js.contains(".play("));assertFalse(js.contains("currentTime="));assertEquals(url,web.getLastLoadedUrl());
   view.pause();String before=web.getLastEvaluatedJavascript();refresh.invoke(view);assertEquals(before,web.getLastEvaluatedJavascript());
  }
+
+ @Test public void fullscreenCoveragePreservesCustomVideoVisibility() throws Exception {
+  activity.setContentView(view);view.resume();
+  java.lang.reflect.Method show=TubeView.class.getDeclaredMethod("showFullscreen",View.class,WebChromeClient.CustomViewCallback.class);show.setAccessible(true);
+  int[] delivered={-1};View video=new View(activity){protected void onWindowVisibilityChanged(int visibility){super.onWindowVisibilityChanged(visibility);delivered[0]=visibility;}};
+  show.invoke(view,video,(WebChromeClient.CustomViewCallback)()->{});
+  java.lang.reflect.Field field=TubeView.class.getDeclaredField("fullscreen");field.setAccessible(true);
+  View frame=(View)field.get(view);frame.dispatchWindowVisibilityChanged(View.GONE);
+  assertEquals(View.VISIBLE,delivered[0]);
+  java.lang.reflect.Field webField=TubeView.class.getDeclaredField("web");webField.setAccessible(true);
+  assertTrue(shadowOf((WebView)webField.get(view)).getLastEvaluatedJavascript().contains(".cover()"));
+ }
  private Button button(View root,String label){if(root instanceof Button&&label.contentEquals(((Button)root).getText()))return (Button)root;if(root instanceof ViewGroup){ViewGroup group=(ViewGroup)root;for(int i=0;i<group.getChildCount();i++){Button match=button(group.getChildAt(i),label);if(match!=null)return match;}}return null;}
 }

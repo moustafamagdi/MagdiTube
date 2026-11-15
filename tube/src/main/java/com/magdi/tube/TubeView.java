@@ -27,7 +27,18 @@ public final class TubeView extends LinearLayout {
   timer.removeCallbacks(refreshPicture);
   timer.post(refreshPicture);timer.postDelayed(refreshPicture,250);timer.postDelayed(refreshPicture,900);
  }
- @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused&&web!=null)schedulePictureRefresh();}
+ private final Runnable fullscreenReturn=()->{if(!closed&&active&&fullscreen!=null){schedulePictureRefresh();tryResumePlayback();}};
+ private void scheduleFullscreenReturn(){timer.removeCallbacks(fullscreenReturn);timer.postDelayed(fullscreenReturn,300);timer.postDelayed(fullscreenReturn,1100);}
+ @Override public void onWindowFocusChanged(boolean focused){
+  if(!focused&&web!=null&&fullscreen!=null&&background)coverPlayback();
+  super.onWindowFocusChanged(focused);
+  if(focused&&web!=null){schedulePictureRefresh();if(fullscreen!=null)scheduleFullscreenReturn();}
+ }
+ @Override protected void onWindowVisibilityChanged(int visibility){
+  if(visibility!=VISIBLE&&web!=null&&fullscreen!=null&&background)coverPlayback();
+  super.onWindowVisibilityChanged(visibility);
+  if(visibility==VISIBLE&&web!=null&&fullscreen!=null)scheduleFullscreenReturn();
+ }
  @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(web!=null)schedulePictureRefresh();}
  private void refreshVideoSurface(){
   if(closed||!active||accountPage||searchPanel!=null||!isAttachedToWindow()||!isShown())return;
@@ -125,7 +136,7 @@ public final class TubeView extends LinearLayout {
  }
  static boolean allowed(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&h!=null&&(h.equals("youtube.com")||h.endsWith(".youtube.com")||h.equals("youtu.be"));}
 
- void pause(){timer.removeCallbacks(refreshPicture);if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
+ void pause(){timer.removeCallbacks(fullscreenReturn);timer.removeCallbacks(refreshPicture);if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
  void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");schedulePictureRefresh();web.postDelayed(()->{if(!closed&&active)tryResumePlayback();},500);}
  void pauseMedia(){pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
 
@@ -147,11 +158,19 @@ public final class TubeView extends LinearLayout {
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();}
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
   if(fullscreen!=null){callback.onCustomViewHidden();return;}hideSearch();hideChildren();fullscreenCallback=callback;
-  fullscreen=new FrameLayout(getContext());fullscreen.setBackgroundColor(Color.BLACK);fullscreen.addView(view,new FrameLayout.LayoutParams(-1,-1));
+  fullscreen=new FrameLayout(getContext()){
+   @Override public void dispatchWindowVisibilityChanged(int visibility){
+    if(visibility!=VISIBLE&&background&&!closed){coverPlayback();Diagnostics.event("Fullscreen temporarily covered");}
+    // Keep the custom video subtree alive just as we keep the WebView alive.
+    // The real host window still controls what is visible on the car display.
+    super.dispatchWindowVisibilityChanged(background&&!closed?VISIBLE:visibility);
+    if(visibility==VISIBLE&&!closed)scheduleFullscreenReturn();
+   }
+  };fullscreen.setBackgroundColor(Color.BLACK);fullscreen.addView(view,new FrameLayout.LayoutParams(-1,-1));
   Button exit=button(ar?"خروج":"Exit",ar?"الخروج من ملء الشاشة":"Exit fullscreen");FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-2,dp(44),Gravity.TOP|Gravity.END);fullscreen.addView(exit,p);exit.setOnClickListener(v->hideFullscreen());
   addView(fullscreen,new LinearLayout.LayoutParams(-1,0,1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
  }
- private void hideFullscreen(){if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
+ private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
  private void hideSearch(){if(searchPanel==null)return;removeView(searchPanel);searchPanel=null;restoreChildren();}
  private void showSearch(){
   hideFullscreen();if(searchPanel!=null)return;hideChildren();
@@ -170,5 +189,5 @@ public final class TubeView extends LinearLayout {
   addView(panel,new LinearLayout.LayoutParams(-1,0,1));input.requestFocus();
   if(phone)input.postDelayed(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT),150);
  }
- void close(){closed=true;active=false;timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
+ void close(){closed=true;active=false;timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
 }

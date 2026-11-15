@@ -149,3 +149,18 @@ New component regression checks refresh sends no pause/play/seek/reload and does
 nothing while covered. Hardware-compositor recovery on Honda is UNVERIFIED.
 Test while parked: open camera and return without touching the player, in normal
 and fullscreen modes. If still frozen, export log before touching the player.
+
+## 0.1.12-fullscreen-return
+User confirmed normal-view camera return works in 0.1.11 but fullscreen returns
+paused. The custom fullscreen video subtree did not have the WebView's temporary
+window-visibility preservation. Apply it to the custom subtree, leaving actual
+host-window visibility under Android Auto control. Capture cover intent before
+focus/visibility callbacks and on page blur. On fullscreen return, bounded checks
+at 300/1100 ms refresh the picture and attempt existing guarded resume. These are
+not a recurring play loop; manual pause/Stop cancellation remains in place.
+No extra audio focus, reload, seek or simulated touch is introduced.
+
+Tests cover custom subtree visibility/cover notification and page-blur pause intent,
+plus previous regressions. Actual Honda fullscreen audio continuity remains
+unverified. Test normal and fullscreen camera return while parked, and manual Pause
+before leaving (must remain paused). Export log immediately if playback still stops.

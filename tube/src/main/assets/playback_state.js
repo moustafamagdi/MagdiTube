@@ -8,6 +8,7 @@
   v.addEventListener('pause',()=>{if(video===v&&((!covered&&!document.hidden)||Date.now()-lastPointer<800))wanted=false;});
  }
  document.addEventListener('pointerdown',()=>{lastPointer=Date.now();},true);
+ window.addEventListener('blur',()=>{attach();covered=true;},true);
  document.addEventListener('visibilitychange',()=>{if(document.hidden){attach();covered=true;}},true);
  new MutationObserver(attach).observe(document.documentElement,{childList:true,subtree:true});attach();
  window.__magdiPlayback={
