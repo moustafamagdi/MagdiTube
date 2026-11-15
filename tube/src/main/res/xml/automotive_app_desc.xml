@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy non-public Auto SDK. These declarations do NOT imply Play eligibility or host acceptance. -->
+<automotiveApp xmlns:tools="http://schemas.android.com/tools">
+    <uses name="service" tools:ignore="InvalidUsesTagAttribute" />
+    <uses name="projection" tools:ignore="InvalidUsesTagAttribute" />
+</automotiveApp>

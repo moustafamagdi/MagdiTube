@@ -1,0 +1,18 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'com.magdi.tube'
+ compileSdk 36
+ buildToolsVersion '36.0.0'
+ defaultConfig { applicationId 'com.magdi.tube'; minSdk 30; targetSdk 36; versionCode 8; versionName '0.1.7-login-fix' }
+ signingConfigs { personal { storeFile rootProject.file(System.getenv('MAGDI_KEYSTORE') ?: 'signing/magdi-release.p12'); storePassword System.getenv('MAGDI_STORE_PASSWORD'); keyAlias 'magdi-mirror'; keyPassword System.getenv('MAGDI_STORE_PASSWORD') } }
+ buildTypes { release { signingConfig signingConfigs.personal } }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}
+dependencies {
+ // Legacy car SDK needs support-v4. WebKit core dependency is only used by
+ // WebViewAssetLoader (unused here); exclude to avoid duplicate support IPC classes.
+ implementation('androidx.webkit:webkit:1.12.1') { exclude group: 'androidx.core', module: 'core' }
+ implementation files('libs/aauto.aar')
+ implementation 'com.android.support:support-v4:25.3.1'
+ implementation 'com.android.support:recyclerview-v7:25.3.1'
+}
