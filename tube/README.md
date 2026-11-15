@@ -164,3 +164,10 @@ Tests cover custom subtree visibility/cover notification and page-blur pause int
 plus previous regressions. Actual Honda fullscreen audio continuity remains
 unverified. Test normal and fullscreen camera return while parked, and manual Pause
 before leaving (must remain paused). Export log immediately if playback still stops.
+
+## 0.1.13-larger-buttons
+User reports 0.1.12 works well in all tested modes on their Honda. Increase search
+Go and Close buttons to minimum widths of 112/96 dp and fullscreen Exit to 128 dp.
+All three use 18 sp text and 56 dp height; Exit has an 8 dp edge margin. Widths
+can expand for larger text. Playback behavior is unchanged. Build, lint and existing
+component tests are checked; the new sizing has not been viewed on the Honda.

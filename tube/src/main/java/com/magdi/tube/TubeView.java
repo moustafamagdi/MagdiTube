@@ -167,16 +167,17 @@ public final class TubeView extends LinearLayout {
     if(visibility==VISIBLE&&!closed)scheduleFullscreenReturn();
    }
   };fullscreen.setBackgroundColor(Color.BLACK);fullscreen.addView(view,new FrameLayout.LayoutParams(-1,-1));
-  Button exit=button(ar?"خروج":"Exit",ar?"الخروج من ملء الشاشة":"Exit fullscreen");FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-2,dp(44),Gravity.TOP|Gravity.END);fullscreen.addView(exit,p);exit.setOnClickListener(v->hideFullscreen());
+  Button exit=largeActionButton(ar?"خروج":"Exit",ar?"الخروج من ملء الشاشة":"Exit fullscreen",128);FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-2,dp(56),Gravity.TOP|Gravity.END);p.topMargin=dp(8);p.setMarginEnd(dp(8));fullscreen.addView(exit,p);exit.setOnClickListener(v->hideFullscreen());
   addView(fullscreen,new LinearLayout.LayoutParams(-1,0,1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
  }
  private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
  private void hideSearch(){if(searchPanel==null)return;removeView(searchPanel);searchPanel=null;restoreChildren();}
+ private Button largeActionButton(String text,String description,int minWidth){Button b=button(text,description);b.setTextSize(18);b.setMinWidth(dp(minWidth));b.setMinimumWidth(dp(minWidth));b.setPadding(dp(20),0,dp(20),0);return b;}
  private void showSearch(){
   hideFullscreen();if(searchPanel!=null)return;hideChildren();
   LinearLayout panel=new LinearLayout(getContext());panel.setOrientation(VERTICAL);panel.setPadding(dp(8),0,dp(8),0);searchPanel=panel;
-  LinearLayout row=new LinearLayout(getContext());EditText input=new EditText(getContext());input.setTextColor(Color.WHITE);input.setSingleLine(true);input.setHint(ar?"ابحث في YouTube":"Search YouTube");input.setHintTextColor(0xffaaaaaa);input.setShowSoftInputOnFocus(phone);row.addView(input,new LinearLayout.LayoutParams(0,dp(48),1));
-  Button go=button(ar?"بحث":"Go","Search"),cancel=button(ar?"إغلاق":"Close","Close search");row.addView(go);row.addView(cancel);panel.addView(row);
+  LinearLayout row=new LinearLayout(getContext());EditText input=new EditText(getContext());input.setTextColor(Color.WHITE);input.setSingleLine(true);input.setHint(ar?"ابحث في YouTube":"Search YouTube");input.setHintTextColor(0xffaaaaaa);input.setShowSoftInputOnFocus(phone);row.addView(input,new LinearLayout.LayoutParams(0,dp(56),1));
+  Button go=largeActionButton(ar?"بحث":"Go",ar?"بحث":"Search",112),cancel=largeActionButton(ar?"إغلاق":"Close",ar?"إغلاق البحث":"Close search",96);for(Button b:new Button[]{go,cancel}){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(56));p.setMarginStart(dp(4));row.addView(b,p);}panel.addView(row);
   Runnable submit=()->{String q=input.getText().toString().trim();if(q.isEmpty())return;hideSearch();web.loadUrl("https://m.youtube.com/results?search_query="+Uri.encode(q));Diagnostics.event("Search submitted; query not logged");};
   go.setOnClickListener(v->submit.run());cancel.setOnClickListener(v->hideSearch());input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);input.setOnEditorActionListener((v,id,event)->{if(id==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){submit.run();return true;}return false;});
   if(!phone){
