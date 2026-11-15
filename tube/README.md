@@ -195,3 +195,34 @@ until tested on the user's Samsung. Playback logic remains unchanged.
 Validation: signed release build and lint passed; 14 component tests passed (5 setup
 checks and 9 playback/UI regressions). No connected phone was available; actual
 Samsung self-reinstallation and Android Auto acceptance remain unverified.
+
+## 0.1.15-media-card-preview
+Adds a MediaBrowserServiceCompat / MediaSessionCompat control-only source labelled
+Magdi Tube Audio, alongside the legacy video entry. Choose a video in Magdi Tube,
+then select its Audio source in Android Auto and return to the navigation dashboard.
+The host controls card placement and naming. Play/Pause target the existing WebView;
+no new decoder, media URL extraction, audio-focus request or playback on browser
+connection. The muted phone preview cannot replace an established car target.
+
+Pause cancels automatic resume intent and keeps the selected target. A detached car
+session is exempt from idle expiry while its media-card service exists. Play requests
+WebView playback and uses the existing foreground keep-alive, respecting background
+Audio OFF and audio-mode interruptions. The app cannot recover a document after
+process death; choose a video again. Existing full-screen video behavior is retained.
+
+Generic current-video metadata is used; no titles/URLs are logged. Diagnostics record
+browser connections, control commands, target and playback-state reports. Reports
+on Pause initially reflect the requested state; periodic WebView samples provide
+subsequent observations. There is no searchable media catalog/voice-search support;
+only the two specific media-search lint checks are suppressed for this control-only
+preview. No next/previous/seek or artwork feature is claimed.
+
+The 0.1.14 user log confirmed self-reinstall changed installer from packageinstaller
+to com.android.vending while keeping the system installer as initiator on SM-S948B.
+This confirms metadata change, not Android Auto acceptance on other devices.
+
+Validation: release build, scoped lint and 19 component tests passed. Media-card
+tests capture the state submitted to Android's session API (Robolectric does not
+round-trip it through a controller), routing, paused-target retention, no competing
+audio-focus request and no playback on connection. No phone was connected, so real
+Android Auto discovery, dashboard placement and Play/Pause delivery remain untested.

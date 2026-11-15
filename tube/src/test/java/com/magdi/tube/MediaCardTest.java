@@ -1,0 +1,54 @@
+package com.magdi.tube;
+
+import android.app.Activity;
+import android.view.ContextThemeWrapper;
+import android.webkit.WebView;
+import android.support.v4.media.session.PlaybackStateCompat;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+import static org.junit.Assert.*;
+import static org.robolectric.Shadows.shadowOf;
+
+@RunWith(RobolectricTestRunner.class) @Config(sdk=32,shadows=MediaCardTest.CapturedSession.class)
+public class MediaCardTest {
+ // Robolectric does not round-trip platform session state through a controller.
+ // Capture the actual state submitted to the platform; real AA binding is a device test.
+ @org.robolectric.annotation.Implements(android.media.session.MediaSession.class)
+ public static class CapturedSession extends org.robolectric.shadows.ShadowMediaSession {
+  static android.media.session.PlaybackState published;
+  @org.robolectric.annotation.Implementation protected void setPlaybackState(android.media.session.PlaybackState state){published=state;}
+ }
+ private Activity activity;private TubeView car,phone;private MediaCardService service;
+ @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);service=Robolectric.buildService(MediaCardService.class).create().get();}
+ @After public void cleanup(){service.onDestroy();car.close();phone.close();activity.finish();}
+ private org.robolectric.shadows.ShadowWebView web(TubeView view)throws Exception{java.lang.reflect.Field f=TubeView.class.getDeclaredField("web");f.setAccessible(true);return shadowOf((WebView)f.get(view));}
+ private PlaybackStateCompat state(){return PlaybackStateCompat.fromPlaybackState(CapturedSession.published);}
+ @Test public void connectionAndObservationDoNotStartPauseOrRequestAudioFocus()throws Exception{
+  String before=web(car).getLastEvaluatedJavascript();MediaCardService.observe(car,true,false,true,32000);
+  assertEquals(before,web(car).getLastEvaluatedJavascript());assertNotNull(service.getSessionToken());
+  assertNull(shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest());
+  assertEquals(PlaybackStateCompat.STATE_PLAYING,state().getState());
+ }
+ @Test public void pauseKeepsSameTargetAndPlayControlsExistingDocument()throws Exception{
+  MediaCardService.observe(car,true,false,true,32000);String url=web(car).getLastLoadedUrl();
+  service.command(false);assertTrue(web(car).getLastEvaluatedJavascript().contains("v.pause()"));
+  assertSame(car,MediaCardService.target());assertTrue(MediaCardService.retains(car));assertEquals(PlaybackStateCompat.STATE_PAUSED,state().getState());
+  service.command(true);assertTrue(web(car).getLastEvaluatedJavascript().contains("v.play()"));assertEquals(url,web(car).getLastLoadedUrl());
+  assertNull(shadowOf(service.getSystemService(android.media.AudioManager.class)).getLastAudioFocusRequest());
+ }
+ @Test public void mutedPhonePreviewDoesNotStealCarControls()throws Exception{
+  MediaCardService.observe(phone,true,true,true,1000);assertNull(MediaCardService.target());
+  MediaCardService.observe(phone,true,false,true,2000);assertSame(phone,MediaCardService.target());
+  MediaCardService.observe(car,true,false,true,5000);assertSame(car,MediaCardService.target());
+  MediaCardService.observe(phone,true,true,true,3000);service.command(false);
+  assertSame(car,MediaCardService.target());assertTrue(web(car).getLastEvaluatedJavascript().contains("v.pause()"));assertFalse(String.valueOf(web(phone).getLastEvaluatedJavascript()).contains("v.pause()"));
+ }
+ @Test public void noVideoOrDestroyedTargetDoesNotAdvertisePlayableState()throws Exception{
+  String before=web(car).getLastEvaluatedJavascript();service.command(true);assertEquals(before,web(car).getLastEvaluatedJavascript());assertEquals(PlaybackStateCompat.STATE_NONE,state().getState());
+  MediaCardService.observe(car,true,false,true,5000);MediaCardService.forget(car);assertNull(MediaCardService.target());assertEquals(0,state().getActions());
+ }
+ @Test public void browserRejectsUntrustedCaller(){assertNull(service.onGetRoot("attacker",123456,null));assertNull(service.onGetRoot("com.google.android.projection.gearhead",123456,null));assertNotNull(service.onGetRoot(activity.getPackageName(),android.os.Process.myUid(),null));}
+}

@@ -60,8 +60,9 @@ public final class TubeView extends LinearLayout {
    if(closed)return;
    try{String json=new org.json.JSONArray("["+value+"]").getString(0);org.json.JSONObject state=new org.json.JSONObject(json);
     if(!state.optBoolean("resumeWanted"))pendingResume=false;
+    MediaCardService.observe(TubeView.this,state.optBoolean("playing"),state.optBoolean("muted"),state.optInt("ready")>0,state.optLong("time")*1000);
     if(state.optBoolean("playing")&&background)PlaybackService.keep(TubeView.this);else if(!pendingResume&&!interruption)PlaybackService.idle(TubeView.this);
-    if(!active&&getParent()==null&&!state.optBoolean("playing")){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
+    if(!active&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
     if(android.os.SystemClock.elapsedRealtime()-lastVideoLog>15000){Diagnostics.event("Playback visible="+active+" "+json);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
    }catch(org.json.JSONException ignored){}
   });
@@ -140,7 +141,16 @@ public final class TubeView extends LinearLayout {
 
  void pause(){timer.removeCallbacks(fullscreenReturn);timer.removeCallbacks(refreshPicture);if(background)coverPlayback();active=false;CookieManager.getInstance().flush();if(!background||accountPage){web.onPause();pauseMedia();}Diagnostics.event("View covered; background audio="+background);}
  void resume(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);web.onResume();active=true;timer.removeCallbacks(sample);timer.post(sample);Diagnostics.event("View resumed");schedulePictureRefresh();web.postDelayed(()->{if(!closed&&active)tryResumePlayback();},500);}
- void pauseMedia(){pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);PlaybackService.release(this);}
+ boolean isCarView(){return !phone;}
+ void pauseMedia(){pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);MediaCardService.paused(this);PlaybackService.release(this);}
+ void playFromMediaCard(){
+  if(closed||accountPage)return;
+  android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL){Diagnostics.event("Media card play deferred: audio mode interruption");return;}
+  if(!active&&!background){Diagnostics.event("Media card play ignored: background audio disabled");return;}
+  web.onResume();if(background)PlaybackService.keep(this);
+  web.evaluateJavascript("(function(){var v=document.querySelector('video');if(!v)return 'no-video';v.muted=false;v.play().catch(()=>{});return 'play-requested';})()",value->{if(!closed)Diagnostics.event("Media card play request dispatched; playback result follows in observed state");});
+ }
 
  private void coverPlayback(){
   if(web==null||closed||accountPage||!background)return;
@@ -192,5 +202,5 @@ public final class TubeView extends LinearLayout {
   addView(panel,new LinearLayout.LayoutParams(-1,0,1));input.requestFocus();
   if(phone)input.postDelayed(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT),150);
  }
- void close(){closed=true;active=false;timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
+ void close(){closed=true;active=false;timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);MediaCardService.forget(this);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
 }
