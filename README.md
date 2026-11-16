@@ -12,7 +12,7 @@ The phone app supports search, fullscreen and optional sign-in. Background audio
 
 Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **Magdi Tube Audio** entry controls existing playback and shows video information and available playback actions.
 
-The phone app can export diagnostics for playback and connectivity issues.
+The phone app can export diagnostics for playback and connectivity issues. Regional Google account redirects are supported using an exact list of official Google domains; sign-in remains phone-only.
 
 ## Build and test
 
