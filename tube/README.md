@@ -356,3 +356,26 @@ car target routing, call protection, playlist boundaries, disabled buttons and
 stale-command rejection. No connected phone: actual mobile YouTube player methods,
 button availability and Android Auto card presentation still need device testing.
 Reference: https://developer.android.com/training/cars/media/enable-playback
+
+## 0.1.21-full-thumbnail
+Fits the complete original YouTube thumbnail into a 480 x 480 dark artwork tile,
+preserving its aspect ratio with a 24 px minimum inset. This compensates for square
+center-cropping by media-card hosts instead of cropping the source image. Host
+badges, rounded masks and unusual layouts remain outside the application's control.
+Static image composition runs on the existing bounded background image worker;
+there is no video frame capture or per-frame work. A versioned cache key ensures
+previous rectangular cached artwork is replaced without clearing app data.
+
+Validation: signed release build, lint and all 39 component tests passed. New
+checks verify full-image bounds/aspect ratio for landscape, portrait, square and
+4:3 images, square output and source bitmap ownership. This APK was not installed
+on the connected phone; actual Android Auto card appearance requires device testing.
+
+Reviewed both Tube and IPTV manifests: each registers a media-browser service and
+a separate legacy projection service. This explains the two launcher entries per
+app in the supplied screenshot; installed package listing showed one package for
+each app in the queried user. No launcher services were removed. Thumbnail tap
+handling is owned by Android Auto's media UI; direct navigation from that surface
+to the legacy video CarActivity has not been implemented or verified. A normal
+phone activity session intent is not treated as an equivalent car-video shortcut.
+Host UI reference: https://developers.google.com/cars/design/create-apps/media-apps/overview

@@ -42,10 +42,11 @@ class ThumbnailCache {
   io.execute(()->{
    Uri uri=null;
    try{File folder=new File(app.getCacheDir(),"artwork");if(!folder.isDirectory()&&!folder.mkdirs())throw new IOException();
-    File file=new File(folder,key(art.url)+".jpg");
+    File file=new File(folder,key("square-fit-v1:"+art.url)+".jpg");
     if(!file.isFile()||file.length()==0){
      byte[] bytes=download(art.url);
-     Bitmap bitmap=decode(bytes);
+     Bitmap decoded=decode(bytes),bitmap;
+     try{bitmap=cardImage(decoded);}finally{decoded.recycle();}
      File tmp=new File(folder,file.getName()+".tmp");
      try{try(OutputStream out=new FileOutputStream(tmp)){if(!bitmap.compress(Bitmap.CompressFormat.JPEG,88,out))throw new IOException();}
       if(!tmp.renameTo(file))throw new IOException();
@@ -76,6 +77,20 @@ class ThumbnailCache {
   int longest=Math.max(bitmap.getWidth(),bitmap.getHeight());
   if(longest>480){Bitmap scaled=Bitmap.createScaledBitmap(bitmap,Math.max(1,bitmap.getWidth()*480/longest),Math.max(1,bitmap.getHeight()*480/longest),true);if(scaled!=bitmap)bitmap.recycle();bitmap=scaled;}
   return bitmap;
+ }
+ // Android Auto owns the artwork crop. Supply a square with the whole source
+ // fitted inside it, including a small inset for rounded corners / host padding.
+ static android.graphics.RectF cardBounds(int width,int height){
+  if(width<=0||height<=0)throw new IllegalArgumentException("Invalid artwork dimensions");
+  float scale=432f/Math.max(width,height),w=width*scale,h=height*scale;
+  return new android.graphics.RectF((480-w)/2,(480-h)/2,(480+w)/2,(480+h)/2);
+ }
+ static Bitmap cardImage(Bitmap source){
+  Bitmap result=Bitmap.createBitmap(480,480,Bitmap.Config.ARGB_8888);
+  android.graphics.Canvas canvas=new android.graphics.Canvas(result);canvas.drawColor(android.graphics.Color.rgb(18,18,18));
+  android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG|android.graphics.Paint.FILTER_BITMAP_FLAG);
+  canvas.drawBitmap(source,null,cardBounds(source.getWidth(),source.getHeight()),paint);
+  return result;
  }
  private static String key(String url)throws Exception{byte[] digest=MessageDigest.getInstance("SHA-256").digest(url.getBytes("UTF-8"));StringBuilder key=new StringBuilder();for(byte b:digest)key.append(String.format(Locale.ROOT,"%02x",b&255));return key.toString();}
  static void trim(File folder,File keep){File[] files=folder.listFiles((d,n)->n.endsWith(".jpg"));if(files==null)return;Arrays.sort(files,Comparator.comparingLong(File::lastModified).reversed());int count=0;long bytes=0;for(File f:files){count++;bytes+=f.length();if((count>8||bytes>2097152)&&!f.equals(keep))f.delete();}}

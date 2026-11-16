@@ -22,6 +22,21 @@ public class ThumbnailCacheTest {
   android.graphics.Bitmap input=android.graphics.Bitmap.createBitmap(1280,720,android.graphics.Bitmap.Config.ARGB_8888);ByteArrayOutputStream bytes=new ByteArrayOutputStream();input.compress(android.graphics.Bitmap.CompressFormat.PNG,100,bytes);input.recycle();
   android.graphics.Bitmap result=ThumbnailCache.decode(bytes.toByteArray());assertEquals(480,result.getWidth());assertEquals(270,result.getHeight());result.recycle();
  }
+ @Test public void cardFitsEntireLandscapePortraitAndSquareWithoutStretching(){
+  for(int[] size:new int[][]{{1280,720},{720,1280},{480,480},{480,360}}){
+   android.graphics.RectF bounds=ThumbnailCache.cardBounds(size[0],size[1]);
+   assertEquals((float)size[0]/size[1],bounds.width()/bounds.height(),0.001f);
+   assertEquals(240f,bounds.centerX(),0.001f);assertEquals(240f,bounds.centerY(),0.001f);
+   assertTrue(bounds.left>=24&&bounds.top>=24&&bounds.right<=456&&bounds.bottom<=456);
+   assertEquals(432f,Math.max(bounds.width(),bounds.height()),0.001f);
+  }
+ }
+ @Test public void cardImageIsSquareAndLeavesSourceAvailable(){
+  android.graphics.Bitmap source=android.graphics.Bitmap.createBitmap(480,270,android.graphics.Bitmap.Config.ARGB_8888);
+  android.graphics.Bitmap card=ThumbnailCache.cardImage(source);
+  assertEquals(480,card.getWidth());assertEquals(480,card.getHeight());assertFalse(source.isRecycled());assertNotSame(source,card);
+  card.recycle();source.recycle();
+ }
  @Test public void refusesExcessiveImageDimensions()throws Exception{
   android.graphics.Bitmap input=android.graphics.Bitmap.createBitmap(4097,1,android.graphics.Bitmap.Config.ARGB_8888);ByteArrayOutputStream bytes=new ByteArrayOutputStream();input.compress(android.graphics.Bitmap.CompressFormat.PNG,100,bytes);input.recycle();
   try{ThumbnailCache.decode(bytes.toByteArray());fail("Oversized image accepted");}catch(IOException expected){}
