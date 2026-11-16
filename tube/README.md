@@ -379,3 +379,10 @@ handling is owned by Android Auto's media UI; direct navigation from that surfac
 to the legacy video CarActivity has not been implemented or verified. A normal
 phone activity session intent is not treated as an equivalent car-video shortcut.
 Host UI reference: https://developers.google.com/cars/design/create-apps/media-apps/overview
+
+## 0.1.22-audio-icon
+The MediaCardService has its own gold headphones vector icon with a white Tube
+mark. The video/projection and phone application keep the existing mint Tube icon.
+Both services remain enabled. Playback, artwork and navigation are unchanged.
+Release build and lint passed; compiled manifest icon references were checked.
+Android Auto may cache launcher artwork; actual host appearance remains a device check.
