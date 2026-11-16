@@ -226,3 +226,12 @@ tests capture the state submitted to Android's session API (Robolectric does not
 round-trip it through a controller), routing, paused-target retention, no competing
 audio-focus request and no playback on connection. No phone was connected, so real
 Android Auto discovery, dashboard placement and Play/Pause delivery remain untested.
+
+## 0.1.16-exit-position
+Moves the fullscreen Exit button from the top-right corner to the middle of the
+physical left edge, including Arabic layouts, to avoid the reported overlap with
+YouTube quality/subtitle controls. Keeps the 128 dp minimum width, 56 dp height,
+18 sp label and 8 dp edge inset. No playback or media-card behavior change.
+The button still overlays video; actual player layouts can vary.
+
+Validation: release APK build, lint and all 19 existing unit tests passed. Actual car/player layout verification remains with the device test.
