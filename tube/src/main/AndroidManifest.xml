@@ -13,7 +13,7 @@
 <activity android:name=".InstallSetupActivity" android:exported="false"/>
 <receiver android:name=".InstallResultReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
 <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
-<service android:name=".MediaCardService" android:icon="@drawable/ic_tube_audio" android:exported="true" android:label="Magdi Tube Audio" android:icon="@drawable/ic_tube_audio"><intent-filter><action android:name="android.media.browse.MediaBrowserService"/></intent-filter></service>
+<service android:name=".MediaCardService" android:icon="@drawable/ic_tube_audio" android:exported="true" android:label="Magdi Tube Audio"><intent-filter><action android:name="android.media.browse.MediaBrowserService"/></intent-filter></service>
 <service android:name=".TubeService" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="com.google.android.gms.car.category.CATEGORY_PROJECTION"/><category android:name="com.google.android.gms.car.category.CATEGORY_PROJECTION_OEM"/></intent-filter></service>
 <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc"/>
 <provider android:name="android.support.v4.content.FileProvider" android:authorities="${applicationId}.reports" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/report_paths"/></provider></application></manifest>
