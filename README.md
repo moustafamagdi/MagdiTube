@@ -1,4 +1,4 @@
-# Magdi Tube
+# MM Tube
 
 Android app for viewing YouTube in a WebView, with experimental Android Auto projection. Package: `com.magdi.tube`.
 
@@ -10,7 +10,7 @@ The phone app supports search, fullscreen and optional sign-in. Background audio
 
 ## Android Auto
 
-Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **Magdi Tube Audio** entry controls existing playback and shows video information and available playback actions.
+Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **MM Tube Audio** entry controls existing playback and shows video information and available playback actions.
 
 The phone app can export diagnostics for playback and connectivity issues.
 

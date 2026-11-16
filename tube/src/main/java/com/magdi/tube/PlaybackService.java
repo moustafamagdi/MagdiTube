@@ -25,10 +25,10 @@ public final class PlaybackService extends Service {
  public int onStartCommand(Intent intent,int flags,int id){
   boolean ar=getResources().getConfiguration().getLocales().get(0).getLanguage().equals("ar");
   NotificationManager manager=getSystemService(NotificationManager.class);
-  manager.createNotificationChannel(new NotificationChannel("playback","Magdi Tube playback",NotificationManager.IMPORTANCE_LOW));
+  manager.createNotificationChannel(new NotificationChannel("playback","MM Tube playback",NotificationManager.IMPORTANCE_LOW));
   PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
   PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,PlaybackService.class).setAction("stop"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-  Notification notification=new Notification.Builder(this,"playback").setSmallIcon(R.drawable.ic_tube).setContentTitle("Magdi Tube").setContentText(ar?"الصوت يعمل في الخلفية":"Background audio playing").setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,ar?"إيقاف":"Stop",stop).build()).build();
+  Notification notification=new Notification.Builder(this,"playback").setSmallIcon(R.drawable.ic_tube).setContentTitle("MM Tube").setContentText(ar?"الصوت يعمل في الخلفية":"Background audio playing").setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,ar?"إيقاف":"Stop",stop).build()).build();
   startForeground(108,notification,android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
   if(intent!=null&&"stop".equals(intent.getAction())){stopPlayback();return START_NOT_STICKY;}
   if(players.isEmpty()){stopSelf();return START_NOT_STICKY;}

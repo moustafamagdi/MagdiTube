@@ -29,7 +29,7 @@ public final class InstallSetupActivity extends Activity {
   if(busy)return;
   if(!getPackageManager().canRequestPackageInstalls()){
    Diagnostics.event("Install setup: waiting for user to allow installs from this app");
-   Toast.makeText(this,ar?"اسمح بالتثبيت من Magdi Tube ثم ارجع واضغط إعادة تثبيت":"Allow installs from Magdi Tube, then return and tap Reinstall",Toast.LENGTH_LONG).show();
+   Toast.makeText(this,ar?"اسمح بالتثبيت من MM Tube ثم ارجع واضغط إعادة تثبيت":"Allow installs from MM Tube, then return and tap Reinstall",Toast.LENGTH_LONG).show();
    try{startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())));}catch(RuntimeException e){fail(e);}return;
   }
   busy=true;install.setEnabled(false);

@@ -92,8 +92,8 @@ public final class TubeView extends LinearLayout {
  Diagnostics.event(c instanceof android.app.Activity?"Phone view created":"Car view created");
  ar=c.getResources().getConfiguration().getLocales().get(0).getLanguage().equals("ar");
  LinearLayout bar=new LinearLayout(c);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),0,dp(8),0);
- ImageView logo=new ImageView(c);logo.setImageResource(R.drawable.ic_tube);logo.setContentDescription("Magdi Tube");bar.addView(logo,new LinearLayout.LayoutParams(dp(32),dp(32)));
- TextView title=new TextView(c);title.setText("Magdi Tube");title.setTextColor(Color.WHITE);title.setTextSize(16);title.setPadding(dp(8),0,0,0);bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+ ImageView logo=new ImageView(c);logo.setImageResource(R.drawable.ic_tube);logo.setContentDescription("MM Tube");bar.addView(logo,new LinearLayout.LayoutParams(dp(32),dp(32)));
+ TextView title=new TextView(c);title.setText("MM Tube");title.setTextColor(Color.WHITE);title.setTextSize(16);title.setPadding(dp(8),0,0,0);bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));
  back=button(ar?"رجوع":"Back",ar?"الصفحة السابقة":"Previous page");
  Button home=button(ar?"الرئيسية":"Home",ar?"رئيسية YouTube":"YouTube home");
  Button reload=button(ar?"تحديث":"Reload",ar?"إعادة تحميل الصفحة":"Reload page");
@@ -118,7 +118,7 @@ public final class TubeView extends LinearLayout {
  web.setWebViewClient(new WebViewClient(){
  public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){
  Uri uri=r.getUrl();String host=uri.getHost();boolean auth=host!=null&&(host.equals("google.com")||host.endsWith(".google.com")||host.equals("accounts.google.com.sa"));
- if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من Magdi Tube على الموبايل ثم اضغط تحديث":"Sign in using Magdi Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
+ if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من MM Tube على الموبايل ثم اضغط تحديث":"Sign in using MM Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
  boolean block=!allowed(uri)&&!(phone&&"https".equals(uri.getScheme())&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));status.setVisibility(VISIBLE);CookiePersistence.request();}return block;
  } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
