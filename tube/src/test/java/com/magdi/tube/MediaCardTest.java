@@ -20,8 +20,9 @@ public class MediaCardTest {
  public static class CapturedSession extends org.robolectric.shadows.ShadowMediaSession {
   static android.media.session.PlaybackState published;
   static android.media.MediaMetadata metadata;
+  static int stateWrites;
   @org.robolectric.annotation.Implementation protected void setMetadata(android.media.MediaMetadata value){metadata=value;}
-  @org.robolectric.annotation.Implementation protected void setPlaybackState(android.media.session.PlaybackState state){published=state;}
+  @org.robolectric.annotation.Implementation protected void setPlaybackState(android.media.session.PlaybackState state){published=state;stateWrites++;}
  }
  private Activity activity;private TubeView car,phone;private MediaCardService service;
  @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);service=Robolectric.buildService(MediaCardService.class).create().get();}
@@ -83,5 +84,12 @@ public class MediaCardTest {
   FakeThumbnails loader=fake();MediaCardService.observe(car,true,false,true,1000,art(FIRST));loader.callbacks.get(0).loaded(null);
   for(int i=0;i<10;i++)MediaCardService.observe(car,true,false,true,2000+i*2000,art(FIRST));
   assertTrue(icon().startsWith("android.resource://"));assertEquals(1,loader.callbacks.size());assertEquals(PlaybackStateCompat.STATE_PLAYING,state().getState());
+ }
+ @Test public void steadyPlaybackAvoidsRepeatedIpcButSeekAndPausePublishImmediately(){
+  MediaCardService.observe(car,true,false,true,1000);int before=CapturedSession.stateWrites;
+  for(int i=1;i<=3;i++){shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(2));MediaCardService.observe(car,true,false,true,1000+i*2000);}
+  assertEquals(before,CapturedSession.stateWrites);
+  MediaCardService.observe(car,true,false,true,90000);assertEquals(before+1,CapturedSession.stateWrites);assertEquals(90000,state().getPosition());
+  MediaCardService.paused(car);assertEquals(before+2,CapturedSession.stateWrites);assertEquals(PlaybackStateCompat.STATE_PAUSED,state().getState());
  }
 }

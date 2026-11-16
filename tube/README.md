@@ -288,3 +288,41 @@ connected, so actual YouTube DOM variations, Android Auto artwork reading/layout
 and car rendering remain device checks. This release does not add next/previous,
 seek, thumbnail-to-video navigation, or claim to fix audio/video synchronization.
 Reference: https://developer.android.com/training/cars/media/create-media-browser/media-artwork
+
+## 0.1.19-performance-preview
+Reduces app-side work during playback without changing video quality, playback
+speed, audio focus ownership or the original YouTube thumbnail source.
+
+- Hidden phone playback yields to an observed playing, unmuted car video. Its
+  media is paused, future autoplay is guarded and its sampling stops. Returning
+  to the phone removes the guard without automatically restarting that video.
+  A visible phone and account sign-in pages are left available.
+- Cookie disk flushes are coalesced on a background worker. Diagnostic formatting
+  and logcat writes also run in the background, with at most 128 pending events;
+  overflow is counted rather than allowed to grow without bound.
+- Repeated focus/fullscreen-return notifications share a three-refresh burst.
+  Only one visual-state callback and one playback sample per generation may be
+  outstanding. Navigation/resume invalidates stale sample results.
+- Playback tracking avoids scanning the DOM on unrelated mutations. Bundled
+  scripts are cached in memory; artwork lookup is requested only for media-card
+  candidates while the service exists. Steady media-session progress is updated
+  every ten seconds; observed state changes and large seeks publish immediately.
+
+Detailed playback diagnostics remain approximately every sixteen seconds and now
+identify phone/car and a process-local view instance. They include video size,
+total/dropped frame counters when supported, waiting/stalled/load events, timer
+lateness, JavaScript callback delay, refresh count and app Java heap usage. No
+video frames are captured. These counters do not measure car-display latency or
+audio/video offset; the Java heap figure excludes native, GPU and WebView renderer
+memory. The normal playback/control observation interval remains two seconds.
+
+Validation: signed release build, lint and all 34 component tests passed. All five
+Node suites passed, including sample instrumentation, suppression/autoplay guards,
+unrelated DOM mutations, original thumbnail selection and ad-filter regressions.
+Tests verify coalesced cookie writes, bounded refresh bursts, slow/stale sample
+handling and media-session update throttling. No phone was connected: actual car
+smoothness, audio/video synchronization and camera/fullscreen return still require
+device testing. No measured FPS or synchronization improvement is claimed.
+
+References: https://developer.android.com/reference/android/webkit/CookieManager#flush()
+and https://w3c.github.io/media-playback-quality/

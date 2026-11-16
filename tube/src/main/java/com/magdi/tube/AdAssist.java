@@ -5,9 +5,10 @@ import androidx.webkit.*;
 import java.util.*;
 final class AdAssist {
  private static final Map<WebView,ScriptHandler> scripts=new WeakHashMap<>();
+ private static final Map<String,String> assets=new HashMap<>();
  static boolean enabled(Context c){return c.getSharedPreferences("tube",0).getBoolean("adAssist",false);}
  static void toggle(Context c){boolean value=!enabled(c);c.getSharedPreferences("tube",0).edit().putBoolean("adAssist",value).apply();Diagnostics.event("Ad assist enabled="+value);}
- static String asset(Context c,String name)throws java.io.IOException{try(java.io.InputStream in=c.getAssets().open(name);java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);return out.toString("UTF-8");}}
+ static synchronized String asset(Context c,String name)throws java.io.IOException{String cached=assets.get(name);if(cached!=null)return cached;try(java.io.InputStream in=c.getAssets().open(name);java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);String value=out.toString("UTF-8");assets.put(name,value);return value;}}
  static void configure(WebView web){
  ScriptHandler old=scripts.remove(web);if(old!=null)old.remove();
  if(!enabled(web.getContext()))return;

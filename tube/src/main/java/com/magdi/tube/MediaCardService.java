@@ -22,6 +22,9 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  private String requestedArtwork="",publishedArtwork="";
  private android.net.Uri artwork;
  private long artworkGeneration;
+ private long statePublishedAt,lastPosition;
+ private int lastPlaybackState=-1;
+ private WeakReference<TubeView> lastStateTarget=new WeakReference<>(null);
  static final class State {
   final boolean playing,muted,ready;final long position;
   final ThumbnailCache.Art art;
@@ -40,6 +43,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  static void paused(TubeView view){State s=observations.get(view);if(s!=null)observe(view,false,s.muted,s.ready,s.position,s.art);}
  static void clearArtwork(TubeView view){State s=observations.get(view);if(s!=null)observe(view,s.playing,s.muted,s.ready,s.position,null);}
  static TubeView target(){return selected.get();}
+ static boolean wantsArtwork(TubeView view){return running.get()!=null&&(selected.get()==null||selected.get()==view||view.isCarView());}
  static boolean retains(TubeView view){return running.get()!=null&&selected.get()==view;}
  static void forget(TubeView view){observations.remove(view);if(selected.get()==view)selected=new WeakReference<>(null);refresh();}
  private static void refresh(){MediaCardService service=running.get();if(service!=null)service.publish();}
@@ -73,7 +77,13 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   String icon=artworkUri().toString();boolean changed=!metadataPublished||now!=available||!icon.equals(publishedArtwork);
   if(changed){metadataPublished=true;publishedArtwork=icon;session.setMetadata(new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,CURRENT).putString(MediaMetadataCompat.METADATA_KEY_TITLE,"Magdi Tube").putString(MediaMetadataCompat.METADATA_KEY_ARTIST,now?(ar()?"صوت الفيديو الحالي":"Current video audio"):(ar()?"اختر فيديو في Magdi Tube أولًا":"Choose a video in Magdi Tube first")).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ART_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,icon).build());}
   long actions=now?PlaybackStateCompat.ACTION_PLAY|PlaybackStateCompat.ACTION_PAUSE|PlaybackStateCompat.ACTION_PLAY_PAUSE|PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID:0;
-  session.setPlaybackState(new PlaybackStateCompat.Builder().setActions(actions).setState(!now?PlaybackStateCompat.STATE_NONE:state.playing?PlaybackStateCompat.STATE_PLAYING:PlaybackStateCompat.STATE_PAUSED,now?state.position:0,now&&state.playing?1f:0f).build());
+  long elapsed=android.os.SystemClock.elapsedRealtime();int playback=!now?PlaybackStateCompat.STATE_NONE:state.playing?PlaybackStateCompat.STATE_PLAYING:PlaybackStateCompat.STATE_PAUSED;
+  long position=now?state.position:0,expected=lastPosition+(lastPlaybackState==PlaybackStateCompat.STATE_PLAYING?elapsed-statePublishedAt:0);
+  // Android extrapolates progress between updates. Publish transitions/seeks immediately.
+  if(playback!=lastPlaybackState||lastStateTarget.get()!=selected.get()||Math.abs(position-expected)>2500||elapsed-statePublishedAt>=10000){
+   session.setPlaybackState(new PlaybackStateCompat.Builder().setActions(actions).setState(playback,position,now&&state.playing?1f:0f).build());
+   lastPlaybackState=playback;lastPosition=position;statePublishedAt=elapsed;lastStateTarget=new WeakReference<>(selected.get());
+  }
   available=now;if(changed)notifyChildrenChanged(ROOT);
  }
  private android.net.Uri artworkUri(){return artwork!=null?artwork:android.net.Uri.parse("android.resource://"+getPackageName()+"/drawable/ic_tube");}
