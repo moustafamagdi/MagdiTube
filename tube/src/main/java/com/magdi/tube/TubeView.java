@@ -56,14 +56,15 @@ public final class TubeView extends LinearLayout {
   boolean call=am.getMode()!=android.media.AudioManager.MODE_NORMAL;
   if(call&&!interruption){interruption=true;coverPlayback();Diagnostics.event("Audio mode interruption started");}
   else if(!call&&interruption){interruption=false;tryResumePlayback();Diagnostics.event("Audio mode interruption ended");}
-  if(!accountPage)web.evaluateJavascript("(function(){var v=document.querySelector('video');return JSON.stringify({playing:!!v&&!v.paused&&!v.ended,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,muted:v?v.muted:false,resumeWanted:window.__magdiPlayback?window.__magdiPlayback.state().wanted:false});})()",value->{
+  if(!accountPage)web.evaluateJavascript("(function(){var v=document.querySelector('video');return JSON.stringify({playing:!!v&&!v.paused&&!v.ended,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,muted:v?v.muted:false,resumeWanted:window.__magdiPlayback?window.__magdiPlayback.state().wanted:false,artwork:window.__magdiArtwork?window.__magdiArtwork():null});})()",value->{
    if(closed)return;
    try{String json=new org.json.JSONArray("["+value+"]").getString(0);org.json.JSONObject state=new org.json.JSONObject(json);
     if(!state.optBoolean("resumeWanted"))pendingResume=false;
-    MediaCardService.observe(TubeView.this,state.optBoolean("playing"),state.optBoolean("muted"),state.optInt("ready")>0,state.optLong("time")*1000);
+    MediaCardService.observe(TubeView.this,state.optBoolean("playing"),state.optBoolean("muted"),state.optInt("ready")>0,state.optLong("time")*1000,ThumbnailCache.Art.parse(state.optJSONObject("artwork")));
+    state.remove("artwork"); // Never include thumbnail URLs or video IDs in diagnostics.
     if(state.optBoolean("playing")&&background)PlaybackService.keep(TubeView.this);else if(!pendingResume&&!interruption)PlaybackService.idle(TubeView.this);
     if(!active&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
-    if(android.os.SystemClock.elapsedRealtime()-lastVideoLog>15000){Diagnostics.event("Playback visible="+active+" "+json);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
+    if(android.os.SystemClock.elapsedRealtime()-lastVideoLog>15000){Diagnostics.event("Playback visible="+active+" "+state);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
    }catch(org.json.JSONException ignored){}
   });
   timer.postDelayed(this,2000);
@@ -105,8 +106,8 @@ public final class TubeView extends LinearLayout {
  if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من Magdi Tube على الموبايل ثم اضغط تحديث":"Sign in using Magdi Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
  boolean block=!allowed(uri)&&!(phone&&"https".equals(uri.getScheme())&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));status.setVisibility(VISIBLE);CookieManager.getInstance().flush();}return block;
- } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){accountPage=!allowed(Uri.parse(u));if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
- public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookieManager.getInstance().flush();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookies flushed");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
+ } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
+ public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookieManager.getInstance().flush();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookies flushed");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_artwork.js"),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
  public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame()){Diagnostics.event("Main frame error code="+e.getErrorCode());status.setText(ar?"تعذر الاتصال. تحقق من الإنترنت واضغط تحديث.":"Unable to connect. Check your internet and tap Reload.");status.setVisibility(VISIBLE);}}
  });
  back.setEnabled(false);back.setOnClickListener(v->handleBack());

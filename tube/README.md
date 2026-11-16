@@ -248,3 +248,43 @@ Fullscreen tests exercise construction of the new drawable/button. Appearance on
 the actual car display remains a user device check. This release changes only the
 Exit control; the discussed performance and expanded media-card features are not
 included.
+
+## 0.1.18-youtube-thumbnail
+The audio card now publishes the current YouTube video's existing thumbnail via
+local content URIs in session metadata and the playable browser item's icon.
+Source order: matching current player-response thumbnail (closest to 480 px),
+matching video poster, matching Open Graph image, then YouTube's hqdefault thumbnail
+for the watch/shorts/live video ID. No screenshots, canvas, frame sampling, media
+stream extraction, frame decoding or separate player are used. Downloaded image
+bytes are decoded/resized as an ordinary static image, preserving aspect ratio.
+
+Only HTTPS i.ytimg.com/img.youtube.com image paths containing the exact video ID
+are accepted in JavaScript and Java. A stale player response is rejected during SPA
+navigation; metadata from another video is ignored. URLs/IDs are stripped before
+playback diagnostics are serialized. Logs report requested/ready/unavailable only;
+ready means a local thumbnail is available, not that the host has displayed it.
+
+Downloads and image processing run on one background worker with a one-item pending
+queue; stale completions cannot replace newer artwork. Redirects are disabled;
+connect/read timeouts are five seconds, response cap 1 MiB, source dimensions at
+most 4096 per side, and output at most 480 px on the longest side. Disk cache retains
+up to eight images / approximately 2 MiB with hashed filenames. Only the individual
+cached image receives read permission for Android Auto; report/installer files are
+not granted. Android Auto receives local URIs rather than large bitmap IPC payloads.
+
+Image requests happen when the selected target's artwork changes, not on every
+playback sample. Pause preserves its artwork; muted phone previews cannot replace
+an established car target. No artwork, failed download or a new video awaiting its
+image uses the app icon rather than an old image or a captured frame. A failed URL
+is not repeatedly retried by the two-second playback poll; changing the video or
+reconnecting/recreating the audio service allows a new request. Feed previews with
+no watch/shorts/live video identity use the app icon.
+
+Validation: release build/lint and 27 component tests passed, including metadata
+publication, stale-completion isolation, pause/cache reuse, download-failure
+fallback, URL/ID validation, image bounds/resizing and cache eviction. Twelve Node
+thumbnail identity/source checks and all existing JS suites passed. No phone was
+connected, so actual YouTube DOM variations, Android Auto artwork reading/layout
+and car rendering remain device checks. This release does not add next/previous,
+seek, thumbnail-to-video navigation, or claim to fix audio/video synchronization.
+Reference: https://developer.android.com/training/cars/media/create-media-browser/media-artwork

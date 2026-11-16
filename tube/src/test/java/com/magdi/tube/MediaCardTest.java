@@ -19,6 +19,8 @@ public class MediaCardTest {
  @org.robolectric.annotation.Implements(android.media.session.MediaSession.class)
  public static class CapturedSession extends org.robolectric.shadows.ShadowMediaSession {
   static android.media.session.PlaybackState published;
+  static android.media.MediaMetadata metadata;
+  @org.robolectric.annotation.Implementation protected void setMetadata(android.media.MediaMetadata value){metadata=value;}
   @org.robolectric.annotation.Implementation protected void setPlaybackState(android.media.session.PlaybackState state){published=state;}
  }
  private Activity activity;private TubeView car,phone;private MediaCardService service;
@@ -51,4 +53,35 @@ public class MediaCardTest {
   MediaCardService.observe(car,true,false,true,5000);MediaCardService.forget(car);assertNull(MediaCardService.target());assertEquals(0,state().getActions());
  }
  @Test public void browserRejectsUntrustedCaller(){assertNull(service.onGetRoot("attacker",123456,null));assertNull(service.onGetRoot("com.google.android.projection.gearhead",123456,null));assertNotNull(service.onGetRoot(activity.getPackageName(),android.os.Process.myUid(),null));}
+ private static final String FIRST="abcdefghijk",SECOND="12345678901";
+ private ThumbnailCache.Art art(String id)throws Exception{return ThumbnailCache.Art.parse(new org.json.JSONObject().put("id",id).put("url","https://i.ytimg.com/vi/"+id+"/hqdefault.jpg"));}
+ private String icon(){return CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART_URI);}
+ private FakeThumbnails fake()throws Exception{
+  java.lang.reflect.Field field=MediaCardService.class.getDeclaredField("thumbnails");field.setAccessible(true);((ThumbnailCache)field.get(service)).close();FakeThumbnails fake=new FakeThumbnails(activity);field.set(service,fake);return fake;
+ }
+ static class FakeThumbnails extends ThumbnailCache {
+  final java.util.List<Result> callbacks=new java.util.ArrayList<>();
+  FakeThumbnails(android.content.Context c){super(c);}
+  @Override void load(Art art,Result result){callbacks.add(result);}
+ }
+ @Test public void delayedPreviousThumbnailCannotOverwriteCurrentVideo()throws Exception{
+  FakeThumbnails loader=fake();MediaCardService.observe(car,true,false,true,1000,art(FIRST));
+  MediaCardService.observe(car,true,false,true,2000,art(SECOND));assertEquals(2,loader.callbacks.size());
+  android.net.Uri first=android.net.Uri.parse("content://com.magdi.tube.reports/artwork/first.jpg"),second=android.net.Uri.parse("content://com.magdi.tube.reports/artwork/second.jpg");
+  loader.callbacks.get(1).loaded(second);assertEquals(second.toString(),icon());
+  loader.callbacks.get(0).loaded(first);assertEquals(second.toString(),icon());
+  MediaCardService.observe(phone,true,true,true,5000,art(FIRST));assertEquals(second.toString(),icon());assertEquals(2,loader.callbacks.size());
+ }
+ @Test public void thumbnailIsReusedAcrossSamplesAndPauseAndClearedOnNavigation()throws Exception{
+  FakeThumbnails loader=fake();MediaCardService.observe(car,true,false,true,1000,art(FIRST));
+  android.net.Uri image=android.net.Uri.parse("content://com.magdi.tube.reports/artwork/first.jpg");loader.callbacks.get(0).loaded(image);
+  MediaCardService.observe(car,true,false,true,2000,art(FIRST));service.command(false);
+  assertEquals(1,loader.callbacks.size());assertEquals(image.toString(),icon());assertEquals(PlaybackStateCompat.STATE_PAUSED,state().getState());
+  MediaCardService.clearArtwork(car);assertTrue(icon().startsWith("android.resource://"));
+ }
+ @Test public void failedThumbnailUsesAppIconWithoutRepeatedDownloads()throws Exception{
+  FakeThumbnails loader=fake();MediaCardService.observe(car,true,false,true,1000,art(FIRST));loader.callbacks.get(0).loaded(null);
+  for(int i=0;i<10;i++)MediaCardService.observe(car,true,false,true,2000+i*2000,art(FIRST));
+  assertTrue(icon().startsWith("android.resource://"));assertEquals(1,loader.callbacks.size());assertEquals(PlaybackStateCompat.STATE_PLAYING,state().getState());
+ }
 }
