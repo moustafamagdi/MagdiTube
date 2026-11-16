@@ -1,7 +1,7 @@
 # Magdi Tube
 Independent YouTube WebView app with experimental Android Auto integration.
 Private personal project extracted from moustafamagdi/MagdiMirror at e14b807.
-Package: com.magdi.tube. Current version: 0.1.19-performance-preview.
+Package: com.magdi.tube. Current version: 0.1.20-media-details.
 
 ## Build
 Use JDK 17+, Android SDK 36 / Build Tools 36.0.0 and the Gradle wrapper.

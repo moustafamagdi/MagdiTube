@@ -17,8 +17,10 @@ import java.util.concurrent.*;
 class ThumbnailCache {
  interface Result {void loaded(Uri uri);}
  static final class Art {
-  final String id,url;
-  private Art(String id,String url){this.id=id;this.url=url;}
+  final String id,url,title,author;
+  final boolean next,previous;
+  private Art(String id,String url,org.json.JSONObject data){this.id=id;this.url=url;title=label(data.opt("title"));author=label(data.opt("author"));next=data.optBoolean("next");previous=data.optBoolean("previous");}
+  private static String label(Object value){if(!(value instanceof String))return "";String s=((String)value).replaceAll("[\\x00-\\x1f\\x7f]"," ").trim();return s.length()>300?s.substring(0,300):s;}
   static Art parse(org.json.JSONObject data){
    if(data==null)return null;
    String id=data.optString("id"),url=data.optString("url");
@@ -26,7 +28,7 @@ class ThumbnailCache {
    try{URI u=new URI(url);String host=u.getHost();
     if(!"https".equals(u.getScheme())||!("i.ytimg.com".equals(host)||"img.youtube.com".equals(host))||u.getUserInfo()!=null||(u.getPort()!=-1&&u.getPort()!=443)||u.getFragment()!=null)return null;
     if(!u.getRawPath().matches("/vi(?:_webp)?/"+id+"/[A-Za-z0-9_-]+\\.(?:jpg|webp)"))return null;
-    return new Art(id,url);
+    return new Art(id,url,data);
    }catch(Exception e){return null;}
   }
  }

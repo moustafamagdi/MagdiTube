@@ -16,17 +16,27 @@
     if(response&&response.videoDetails&&response.videoDetails.videoId!==id)return null;
    }
    if(!response){const initial=window.ytInitialPlayerResponse;if(initial&&initial.videoDetails&&initial.videoDetails.videoId===id)response=initial;}
+   let details=response&&response.videoDetails;
+   if((!details||details.videoId!==id)&&player&&typeof player.getVideoData==='function'){
+    try{const data=player.getVideoData();if(data&&data.video_id===id)details={videoId:id,title:data.title,author:data.author};}catch(e){}
+   }
+   function text(value){return typeof value==='string'?value.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,300):'';}
+   function result(url){
+    const matched=details&&details.videoId===id;
+    const controls=window.__magdiTransport?window.__magdiTransport.state(id):{};
+    return {id:id,url:url,title:matched?text(details.title):'',author:matched?text(details.author):'',next:!!controls.next,previous:!!controls.previous};
+   }
    const list=response&&response.videoDetails&&response.videoDetails.thumbnail&&response.videoDetails.thumbnail.thumbnails;
    if(Array.isArray(list)){
     const choices=list.filter(t=>valid(t.url)).sort((a,b)=>Math.abs((a.width||480)-480)-Math.abs((b.width||480)-480));
-    if(choices.length)return {id:id,url:valid(choices[0].url)};
+    if(choices.length)return result(valid(choices[0].url));
    }
    const poster=valid(document.querySelector('video').poster);
-   if(poster)return {id:id,url:poster};
+   if(poster)return result(poster);
    const image=document.querySelector('meta[property="og:image"]');
    const meta=image&&valid(image.content);
    // The image path must contain this exact video's ID, even for cached page metadata.
-   return {id:id,url:meta||('https://i.ytimg.com/vi/'+id+'/hqdefault.jpg')};
+   return result(meta||('https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'));
   }catch(e){return null;}
  };
 })();

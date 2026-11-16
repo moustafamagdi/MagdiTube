@@ -326,3 +326,33 @@ device testing. No measured FPS or synchronization improvement is claimed.
 
 References: https://developer.android.com/reference/android/webkit/CookieManager#flush()
 and https://w3c.github.io/media-playback-quality/
+
+## 0.1.20-media-details
+Publishes the current video title and channel in media-session title/display-title
+and artist/display-subtitle, and in the playable browser item. Reads only a player
+response or player video data matching the current YouTube video ID. Missing or
+stale details use a generic current-audio label; document titles from search/feed
+pages are never used. Text is bounded to 300 characters and control characters are
+removed. Title changes publish even when artwork is unchanged; pause preserves
+details and navigation clears them. Titles remain inside the artwork observation
+removed before diagnostic serialization, and are not logged or written to disk.
+
+Adds standard next/previous media-session callbacks and advertises each action
+only when available. The page bridge checks a matching current watch-page player,
+then uses its enabled next/previous button or a verified playlist neighbour and
+corresponding player method. It checks identity and availability again at command
+time, so a stale command cannot skip a newly selected video. No browser-history
+navigation, arbitrary recommendation selection or rewind-as-previous fallback is
+used. Unsupported player layouts and playlist boundaries leave that action absent.
+Calls and suppressed phone pages cannot start playback through skip commands.
+
+Original YouTube thumbnail retrieval, aspect ratio and performance optimizations
+are preserved. This release does not alter artwork cropping/layout by the host,
+add seek controls or open the video when artwork is tapped.
+
+Validation: signed release build, lint, 37 component tests and all six Node suites
+passed. Added title replacement/pause/clearing/size tests, immediate action updates,
+car target routing, call protection, playlist boundaries, disabled buttons and
+stale-command rejection. No connected phone: actual mobile YouTube player methods,
+button availability and Android Auto card presentation still need device testing.
+Reference: https://developer.android.com/training/cars/media/enable-playback

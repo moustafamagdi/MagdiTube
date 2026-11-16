@@ -22,3 +22,9 @@ assert.equal(page({path:'/live/'+id}).id,id);
 assert.equal(page({path:'/watch?v=invalid'}),null);
 // The harness deliberately has no canvas, frame callback, capture API, fetch, or video pixel access.
 console.log('PASS: 12 thumbnail source/identity checks; no video capture APIs used');
+const titled=page({response:{videoDetails:{videoId:id,title:'  Video\nTitle  ',author:'Channel'}}});
+assert.equal(titled.title,'Video Title');assert.equal(titled.author,'Channel');
+assert.equal(page({initial:{videoDetails:{videoId:other,title:'Wrong title',author:'Wrong channel'}}}).title,'');
+assert.equal(page({response:{videoDetails:{videoId:id,title:'x'.repeat(500)}}}).title.length,300);
+assert.equal(page({response:{videoDetails:{videoId:id,title:{bad:'object'}}}}).title,'');
+console.log('PASS: current identity only, bounded text and no stale title fallback');

@@ -122,7 +122,7 @@ public final class TubeView extends LinearLayout {
  boolean block=!allowed(uri)&&!(phone&&"https".equals(uri.getScheme())&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));status.setVisibility(VISIBLE);CookiePersistence.request();}return block;
  } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
- public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookiePersistence.request();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookie persistence queued");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_artwork.js"),null);v.evaluateJavascript(AdAssist.asset(c,"playback_sample.js"),null);if(phoneSuppressed)v.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.suppress(true)",null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
+ public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookiePersistence.request();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookie persistence queued");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_artwork.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_transport.js"),null);v.evaluateJavascript(AdAssist.asset(c,"playback_sample.js"),null);if(phoneSuppressed)v.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.suppress(true)",null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
  public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame()){Diagnostics.event("Main frame error code="+e.getErrorCode());status.setText(ar?"تعذر الاتصال. تحقق من الإنترنت واضغط تحديث.":"Unable to connect. Check your internet and tap Reload.");status.setVisibility(VISIBLE);}}
  });
  back.setEnabled(false);back.setOnClickListener(v->handleBack());
@@ -172,6 +172,13 @@ public final class TubeView extends LinearLayout {
   if(!active&&!background){Diagnostics.event("Media card play ignored: background audio disabled");return;}
   releasePhoneSuppression();web.onResume();timer.removeCallbacks(sample);sampleDue=0;timer.post(sample);if(background)PlaybackService.keep(this);
   web.evaluateJavascript("(function(){var v=document.querySelector('video');if(!v)return 'no-video';v.muted=false;v.play().catch(()=>{});return 'play-requested';})()",value->{if(!closed)Diagnostics.event("Media card play request dispatched; playback result follows in observed state");});
+ }
+
+ void skipFromMediaCard(String id,boolean next){
+  if(closed||accountPage||phoneSuppressed||(!active&&!background)||!id.matches("[A-Za-z0-9_-]{11}"))return;
+  android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL){Diagnostics.event("Media card skip deferred: audio mode interruption");return;}
+  web.evaluateJavascript("window.__magdiTransport?window.__magdiTransport.skip('"+id+"',"+next+"):'unavailable'",value->{if(!closed)Diagnostics.event("Media card "+(next?"NEXT":"PREVIOUS")+" "+("\"requested\"".equals(value)?"request dispatched; playback result follows":"unavailable"));});
  }
 
  private void coverPlayback(){

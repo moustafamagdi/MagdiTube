@@ -24,6 +24,8 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  private long artworkGeneration;
  private long statePublishedAt,lastPosition;
  private int lastPlaybackState=-1;
+ private long lastActions=-1;
+ private String publishedTitle="",publishedAuthor="";
  private WeakReference<TubeView> lastStateTarget=new WeakReference<>(null);
  static final class State {
   final boolean playing,muted,ready;final long position;
@@ -55,6 +57,8 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
    public void onPlay(){command(true);}
    public void onPause(){command(false);}
    public void onStop(){command(false);}
+   public void onSkipToNext(){skip(true);}
+   public void onSkipToPrevious(){skip(false);}
    public void onPlayFromMediaId(String id,Bundle extras){if(CURRENT.equals(id))command(true);}
   });
   setSessionToken(session.getSessionToken());session.setActive(true);publish();Diagnostics.event("Media card service connected; no additional audio focus requested");
@@ -68,21 +72,25 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  }
  @Override public void onLoadChildren(String parent,Result<List<MediaBrowserCompat.MediaItem>> result){
   if(!ROOT.equals(parent)){result.sendResult(Collections.emptyList());return;}
-  MediaDescriptionCompat description=new MediaDescriptionCompat.Builder().setMediaId(CURRENT).setTitle(ar()?"صوت الفيديو الحالي":"Current video audio").setIconUri(artworkUri()).setSubtitle(available?(ar()?"تشغيل وإيقاف مؤقت":"Play and pause"):(ar()?"افتح Magdi Tube واختر فيديو أولًا":"Open Magdi Tube and choose a video first")).build();
+  MediaDescriptionCompat description=new MediaDescriptionCompat.Builder().setMediaId(CURRENT).setTitle(publishedTitle).setIconUri(artworkUri()).setSubtitle(publishedAuthor).build();
   result.sendResult(Collections.singletonList(new MediaBrowserCompat.MediaItem(description,available?MediaBrowserCompat.MediaItem.FLAG_PLAYABLE:0)));
  }
  private void publish(){
   if(session==null)return;State state=observations.get(selected.get());boolean now=state!=null&&state.ready;
   updateArtwork(now?state.art:null);
-  String icon=artworkUri().toString();boolean changed=!metadataPublished||now!=available||!icon.equals(publishedArtwork);
-  if(changed){metadataPublished=true;publishedArtwork=icon;session.setMetadata(new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,CURRENT).putString(MediaMetadataCompat.METADATA_KEY_TITLE,"Magdi Tube").putString(MediaMetadataCompat.METADATA_KEY_ARTIST,now?(ar()?"صوت الفيديو الحالي":"Current video audio"):(ar()?"اختر فيديو في Magdi Tube أولًا":"Choose a video in Magdi Tube first")).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ART_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,icon).build());}
+  ThumbnailCache.Art details=now?state.art:null;
+  String title=details!=null&&!details.title.isEmpty()?details.title:(ar()?"صوت الفيديو الحالي":"Current video audio");
+  String author=details!=null&&!details.author.isEmpty()?details.author:now?"Magdi Tube":(ar()?"اختر فيديو في Magdi Tube أولًا":"Choose a video in Magdi Tube first");
+  String icon=artworkUri().toString();boolean changed=!metadataPublished||now!=available||!icon.equals(publishedArtwork)||!title.equals(publishedTitle)||!author.equals(publishedAuthor);
+  if(changed){metadataPublished=true;publishedArtwork=icon;publishedTitle=title;publishedAuthor=author;session.setMetadata(new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,CURRENT).putString(MediaMetadataCompat.METADATA_KEY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ART_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,icon).build());}
   long actions=now?PlaybackStateCompat.ACTION_PLAY|PlaybackStateCompat.ACTION_PAUSE|PlaybackStateCompat.ACTION_PLAY_PAUSE|PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID:0;
+  if(details!=null){if(details.next)actions|=PlaybackStateCompat.ACTION_SKIP_TO_NEXT;if(details.previous)actions|=PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;}
   long elapsed=android.os.SystemClock.elapsedRealtime();int playback=!now?PlaybackStateCompat.STATE_NONE:state.playing?PlaybackStateCompat.STATE_PLAYING:PlaybackStateCompat.STATE_PAUSED;
   long position=now?state.position:0,expected=lastPosition+(lastPlaybackState==PlaybackStateCompat.STATE_PLAYING?elapsed-statePublishedAt:0);
   // Android extrapolates progress between updates. Publish transitions/seeks immediately.
-  if(playback!=lastPlaybackState||lastStateTarget.get()!=selected.get()||Math.abs(position-expected)>2500||elapsed-statePublishedAt>=10000){
+  if(actions!=lastActions||playback!=lastPlaybackState||lastStateTarget.get()!=selected.get()||Math.abs(position-expected)>2500||elapsed-statePublishedAt>=10000){
    session.setPlaybackState(new PlaybackStateCompat.Builder().setActions(actions).setState(playback,position,now&&state.playing?1f:0f).build());
-   lastPlaybackState=playback;lastPosition=position;statePublishedAt=elapsed;lastStateTarget=new WeakReference<>(selected.get());
+   lastActions=actions;lastPlaybackState=playback;lastPosition=position;statePublishedAt=elapsed;lastStateTarget=new WeakReference<>(selected.get());
   }
   available=now;if(changed)notifyChildrenChanged(ROOT);
  }
@@ -103,6 +111,11 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   if(view==null||state==null||!state.ready){Diagnostics.event("Media card command ignored: no current video");publish();return;}
   Diagnostics.event("Media card command: "+(play?"PLAY":"PAUSE")+" target="+(view.isCarView()?"car":"phone"));
   if(play)view.playFromMediaCard();else view.pauseMedia();
+ }
+ void skip(boolean next){
+  TubeView view=selected.get();State state=observations.get(view);ThumbnailCache.Art details=state==null?null:state.art;
+  if(view==null||state==null||!state.ready||details==null||!(next?details.next:details.previous)){Diagnostics.event("Media card skip unavailable");return;}
+  view.skipFromMediaCard(details.id,next);
  }
  @Override public void onDestroy(){if(running.get()==this)running=new WeakReference<>(null);artworkGeneration++;if(thumbnails!=null)thumbnails.close();if(session!=null){session.setActive(false);session.release();session=null;}Diagnostics.event("Media card service disconnected");super.onDestroy();}
 }

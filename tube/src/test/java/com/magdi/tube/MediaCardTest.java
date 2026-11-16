@@ -85,6 +85,33 @@ public class MediaCardTest {
   for(int i=0;i<10;i++)MediaCardService.observe(car,true,false,true,2000+i*2000,art(FIRST));
   assertTrue(icon().startsWith("android.resource://"));assertEquals(1,loader.callbacks.size());assertEquals(PlaybackStateCompat.STATE_PLAYING,state().getState());
  }
+ private ThumbnailCache.Art details(String title,boolean next,boolean previous)throws Exception{return ThumbnailCache.Art.parse(new org.json.JSONObject().put("id",FIRST).put("url","https://i.ytimg.com/vi/"+FIRST+"/hqdefault.jpg").put("title",title).put("author","Channel").put("next",next).put("previous",previous));}
+ @Test public void titleChangesPublishEvenWithSameThumbnailAndPausePreservesIt()throws Exception{
+  FakeThumbnails loader=fake();MediaCardService.observe(car,true,false,true,1000,details("Video title",false,false));
+  assertEquals("Video title",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE));
+  assertEquals("Channel",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST));
+  MediaCardService.observe(car,true,false,true,1000,details("Updated title",false,false));
+  assertEquals("Updated title",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_DISPLAY_TITLE));assertEquals(1,loader.callbacks.size());
+  service.command(false);assertEquals("Updated title",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE));
+  MediaCardService.clearArtwork(car);assertNotEquals("Updated title",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE));
+ }
+ @Test public void transportCapabilitiesUpdateImmediatelyAndOnlyControlSelectedCar()throws Exception{
+  fake();MediaCardService.observe(car,true,false,true,1000,details("Video",true,false));
+  assertTrue((state().getActions()&PlaybackStateCompat.ACTION_SKIP_TO_NEXT)!=0);assertEquals(0,state().getActions()&PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
+  String before=web(car).getLastEvaluatedJavascript();service.skip(false);assertEquals(before,web(car).getLastEvaluatedJavascript());
+  service.skip(true);assertTrue(web(car).getLastEvaluatedJavascript().contains("__magdiTransport.skip('"+FIRST+"',true)"));
+  MediaCardService.observe(car,true,false,true,1000,details("Video",false,true));
+  assertEquals(0,state().getActions()&PlaybackStateCompat.ACTION_SKIP_TO_NEXT);assertTrue((state().getActions()&PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)!=0);
+  String phoneBefore=web(phone).getLastEvaluatedJavascript();MediaCardService.observe(phone,true,true,true,1000,details("Phone",true,true));service.skip(false);
+  assertEquals(phoneBefore,web(phone).getLastEvaluatedJavascript());assertTrue(web(car).getLastEvaluatedJavascript().contains("',false)"));assertEquals("Video",CapturedSession.metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE));
+  MediaCardService.clearArtwork(car);assertEquals(0,state().getActions()&PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
+ }
+ @Test public void titleIsBoundedAndSkipDoesNotStartDuringCall()throws Exception{
+  fake();ThumbnailCache.Art data=details(String.join("",java.util.Collections.nCopies(500,"x")),true,true);assertEquals(300,data.title.length());
+  MediaCardService.observe(car,true,false,true,1000,data);
+  activity.getSystemService(android.media.AudioManager.class).setMode(android.media.AudioManager.MODE_IN_CALL);
+  String before=web(car).getLastEvaluatedJavascript();service.skip(true);assertEquals(before,web(car).getLastEvaluatedJavascript());
+ }
  @Test public void steadyPlaybackAvoidsRepeatedIpcButSeekAndPausePublishImmediately(){
   MediaCardService.observe(car,true,false,true,1000);int before=CapturedSession.stateWrites;
   for(int i=1;i<=3;i++){shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(2));MediaCardService.observe(car,true,false,true,1000+i*2000);}
