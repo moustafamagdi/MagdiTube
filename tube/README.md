@@ -235,3 +235,16 @@ YouTube quality/subtitle controls. Keeps the 128 dp minimum width, 56 dp height,
 The button still overlays video; actual player layouts can vary.
 
 Validation: release APK build, lint and all 19 existing unit tests passed. Actual car/player layout verification remains with the device test.
+
+## 0.1.17-compact-exit
+Replaces the fullscreen Exit label with a white vector close icon on a translucent
+36 dp circular background. A 48 dp touch target keeps it usable without the previous
+wide visual footprint. The circle remains midway down the physical left edge with
+an 8 dp visible inset, including RTL layouts. Adds bounded press feedback and a
+focus outline, with localized accessibility descriptions.
+
+Validation: signed release build, lint and all 19 existing component tests passed.
+Fullscreen tests exercise construction of the new drawable/button. Appearance on
+the actual car display remains a user device check. This release changes only the
+Exit control; the discussed performance and expanded media-card features are not
+included.
