@@ -15,4 +15,4 @@
 `com.android.support:support-v4:25.3.1` and `com.android.support:recyclerview-v7:25.3.1`, resolved from Google's Maven repository. These legacy versions satisfy the historical Auto SDK's `android.support` interfaces. Their upstream Apache 2.0 notices and dependency metadata remain in the libraries/build metadata.
 
 
-AndroidX WebKit 1.12.1: Apache 2.0. Fermata and TizenTube were studied as architecture references; their application source was not copied. See tube/README.md.
+AndroidX WebKit 1.12.1: Apache 2.0. Fermata and TizenTube were studied as architecture references; their application source was not copied.

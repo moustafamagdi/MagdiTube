@@ -1,25 +1,27 @@
 # Magdi Tube
-Independent YouTube WebView app with experimental Android Auto integration.
-Private personal project extracted from moustafamagdi/MagdiMirror at e14b807.
-Package: com.magdi.tube. Current version: 0.1.22-audio-icon.
 
-## Build
-Use JDK 17+, Android SDK 36 / Build Tools 36.0.0 and the Gradle wrapper.
-Set sdk.dir in local.properties or ANDROID_HOME. For signed releases set
-MAGDI_KEYSTORE to the existing private PKCS12 file and MAGDI_STORE_PASSWORD to
-its password (alias magdi-mirror). Signing secrets are never included here.
-Run ./gradlew :tube:assembleRelease :tube:lintRelease.
-Run node tube/tests/player-filter.cjs and node tube/tests/ad-assist.cjs.
+Android app for viewing YouTube in a WebView, with experimental Android Auto projection. Package: `com.magdi.tube`.
 
-## Versions and testing
-See [module notes](tube/README.md) for the architecture, experimental ad filter,
-authentication behavior and actual DHU test limits. 0.1.7 permits the exact
-accounts.google.com.sa HTTPS phone sign-in callback reported by the user.
-The new account flow still requires a user retry; no login success is claimed.
+## Install and use
 
-Install updates over the existing application to preserve data and the account
-session. The package name and release signing certificate remain unchanged.
-Ad blocking can be toggled on the phone or with Block: ON/OFF on the car.
-Complete ad blocking is not guaranteed. No Honda validation of this version.
+Download the APK from [GitHub Releases](https://github.com/moustafamagdi/MagdiTube/releases). Install an update signed with the same certificate over the existing app to keep your settings and account session.
 
-0.1.8 adds player fullscreen handling, in-car Arabic/English Search keyboard, and experimental background audio. See module notes for test evidence and limitations.
+The phone app supports search, fullscreen and optional sign-in. Background audio and ad filtering are configurable. Playback, sign-in and ad filtering depend on the device's WebView and YouTube's current behavior.
+
+## Android Auto
+
+Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **Magdi Tube Audio** entry controls existing playback and shows video information and available playback actions.
+
+The phone app can export diagnostics for playback and connectivity issues.
+
+## Build and test
+
+Use JDK 17 and the Android SDK with API 36 and Build Tools 36.0.0. Set `ANDROID_HOME` or configure `sdk.dir` in `local.properties`, then run:
+
+```sh
+./gradlew :tube:assembleDebug :tube:testDebugUnitTest
+```
+
+On Windows, use `gradlew.bat`. For an existing signed release, set `MAGDI_KEYSTORE` to the PKCS12 key file and `MAGDI_STORE_PASSWORD` to its password, then run `./gradlew :tube:assembleRelease :tube:lintRelease`. Keep signing files outside the repository.
+
+The JavaScript suites in `tube/tests/` can be run individually with Node.js. See [third-party notices](THIRD_PARTY.md) for dependency sources.
