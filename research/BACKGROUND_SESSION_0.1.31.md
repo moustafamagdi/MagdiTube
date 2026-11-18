@@ -25,3 +25,9 @@ Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a
 ## Physical device check
 
 With Background audio ON, play a video/fullscreen, open reverse camera or another car view, then return. Confirm continuing audio, retained video/time and no Home reload. Repeat after explicit Pause (must remain paused) and Stop (must remain stopped). Disconnect while loading; reconnect must not autoplay. If a particular host unbinds the car service when opening its camera, playback is intentionally cancelled at that boundary; export the new Car log so that lifecycle can be identified rather than treating it as a mere cover.
+
+## Publication verification
+
+Published v0.1.31-background-session at 0a19a03 using [GitHub Actions run 44324481286](https://github.com/moustafamagdi/MagdiTube/actions/runs/44324481286). The browser was unavailable, so an isolated temporary upload branch used GitHub's built-in workflow token to verify and publish the already-signed APK; no local authentication tokens or signing secrets were uploaded. Its checks restricted source changes to the upload bundle/workflow and verified exact SHA-256, existing certificate, package and code before publishing. The temporary remote branch/worktree was removed after success; no upload workflow or APK was added to main.
+
+Downloaded public APK matched the local SHA-256 and existing signing certificate; aapt confirmed versionCode 32 and versionName 0.1.31-background-session. Asset label is versionCode=32. The unchanged MM Auto Releases.java parser passed its published-feed regression, selecting the exact asset/URL/digest/code, offering an update from code 31 and rejecting an update over codes 32 or 33. This is a JVM parser check, not a physical MM Auto UI test.
