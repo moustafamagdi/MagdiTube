@@ -16,7 +16,7 @@ public final class ControllerHarnessActivity extends Activity {
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);Button toggle=new Button(this);toggle.setText("Toggle test car");root.addView(toggle);
   LinearLayout panels=new LinearLayout(this);root.addView(panels,new LinearLayout.LayoutParams(-1,0,1));
   phone=new TubeView(this);car=new TubeView(new android.view.ContextThemeWrapper(this,android.R.style.Theme_Material_NoActionBar));
-  phoneWeb=web(phone);carWeb=web(car);fixture(phoneWeb,true);fixture(carWeb,false);
+  phoneWeb=web(phone);carWeb=web(car);fixture(phoneWeb,true);if(!getIntent().getBooleanExtra("liveCar",false))fixture(carWeb,false);
   phoneWeb.addJavascriptInterface(new Harness(),"Harness");
   panels.addView(phone,new LinearLayout.LayoutParams(0,-1,1));panels.addView(car,new LinearLayout.LayoutParams(0,-1,1));setContentView(root);
   probe=new WebView(this);probe.getSettings().setJavaScriptEnabled(true);probe.getSettings().setMediaPlaybackRequiresUserGesture(false);root.addView(probe,new LinearLayout.LayoutParams(1,1));

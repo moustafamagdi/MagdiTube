@@ -3,7 +3,7 @@ android {
  namespace 'com.magdi.tube'
  compileSdk 36
  buildToolsVersion '36.0.0'
- defaultConfig { applicationId 'com.magdi.tube'; minSdk 30; targetSdk 36; versionCode 33; versionName '0.1.32-controller-fullscreen' }
+ defaultConfig { applicationId 'com.magdi.tube'; minSdk 30; targetSdk 36; versionCode 34; versionName '0.1.33-player-controls' }
  signingConfigs { personal { storeFile rootProject.file(System.getenv('MAGDI_KEYSTORE') ?: 'signing/magdi-release.p12'); storePassword System.getenv('MAGDI_STORE_PASSWORD'); keyAlias 'magdi-mirror'; keyPassword System.getenv('MAGDI_STORE_PASSWORD') } }
  buildTypes { release { signingConfig signingConfigs.personal } }
  testOptions { unitTests.includeAndroidResources = true }

@@ -46,7 +46,7 @@ try{
  await phone("document.querySelectorAll('a')[1].click()");await until(phone,"JSON.parse(Harness.state()).phase==='playing'&&JSON.parse(Harness.state()).playback.title==='Fixture BBBBBBBBBBB'");
  assert.equal(await car("return !document.getElementById('magdi-car-fullscreen')"),true);pass('Replacement selection cancels fullscreen without affecting the new document');
  await phone("Harness.command('fullscreen',0)");await until(car,"!!document.getElementById('magdi-car-fullscreen')");
- await phone("Harness.command('stop',0)");await until(car,"location.pathname==='/'&&!document.querySelector('video')");
+ await phone("Harness.command('stop',0)");await until(car,"location.pathname==='/'&&!document.querySelector('video')");await until(phone,"!JSON.parse(Harness.controls()).Stop");
  assert.equal(await car("return !document.getElementById('magdi-car-fullscreen')"),true);pass('Stop from remote fullscreen returns Home');
  console.log(JSON.stringify({passed:checks.length,checks},null,2));
 }finally{for(const ws of sockets)ws.close();}
