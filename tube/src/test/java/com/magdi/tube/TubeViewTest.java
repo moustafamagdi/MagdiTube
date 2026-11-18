@@ -93,5 +93,25 @@ public class TubeViewTest {
   java.lang.reflect.Field webField=TubeView.class.getDeclaredField("web");webField.setAccessible(true);
   assertTrue(shadowOf((WebView)webField.get(view)).getLastEvaluatedJavascript().contains(".cover()"));
  }
+ @Test public void fullscreenOverlayKeepsWebViewportSizedAcrossHostResizeAndExit()throws Exception{
+  activity.setContentView(view);view.resume();measure(800,480);
+  java.lang.reflect.Field webField=TubeView.class.getDeclaredField("web");webField.setAccessible(true);WebView web=(WebView)webField.get(view);
+  int normalHeight=web.getMeasuredHeight();assertTrue(normalHeight>0);
+  java.lang.reflect.Method show=TubeView.class.getDeclaredMethod("showFullscreen",View.class,WebChromeClient.CustomViewCallback.class);show.setAccessible(true);
+  show.invoke(view,new View(activity),(WebChromeClient.CustomViewCallback)()->{});measure(800,480);
+  assertEquals(View.INVISIBLE,web.getVisibility());assertEquals(800,web.getMeasuredWidth());assertEquals(480,web.getMeasuredHeight());
+  // Progress callbacks must not bring the hidden toolbar strip into fullscreen layout.
+  shadowOf(web).getWebChromeClient().onProgressChanged(web,25);measure(1024,600);
+  assertEquals(1024,web.getMeasuredWidth());assertEquals(600,web.getMeasuredHeight());
+  view.pause();view.resume();measure(1024,600);assertEquals(600,web.getMeasuredHeight());
+  view.handleBack();measure(800,480);assertEquals(View.VISIBLE,web.getVisibility());assertEquals(normalHeight,web.getMeasuredHeight());
+ }
+ @Test public void searchOverlayAlsoPreservesWebViewportAndRestoresIt(){
+  measure(800,480);button(view,"Search").performClick();measure(800,480);
+  ViewGroup content=(ViewGroup)view.getChildAt(view.getChildCount()-1);View web=content.getChildAt(0);
+  assertEquals(View.INVISIBLE,web.getVisibility());assertEquals(800,web.getMeasuredWidth());assertEquals(480,web.getMeasuredHeight());
+  view.handleBack();measure(800,480);assertEquals(View.VISIBLE,web.getVisibility());assertTrue(web.getMeasuredHeight()>0);
+ }
+ private void measure(int width,int height){view.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));view.layout(0,0,width,height);}
  private Button button(View root,String label){if(root instanceof Button&&label.contentEquals(((Button)root).getText()))return (Button)root;if(root instanceof ViewGroup){ViewGroup group=(ViewGroup)root;for(int i=0;i<group.getChildCount();i++){Button match=button(group.getChildAt(i),label);if(match!=null)return match;}}return null;}
 }

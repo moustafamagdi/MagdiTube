@@ -9,6 +9,7 @@ import android.webkit.*;
 import android.widget.*;
 public final class TubeView extends LinearLayout {
  private final WebView web;
+ private final FrameLayout content;
  private final TextView status;
  private final ProgressBar progress;
  private final Button back;
@@ -52,7 +53,7 @@ public final class TubeView extends LinearLayout {
   View target=fullscreen!=null?fullscreen:web;
   target.requestFocus();target.requestLayout();target.postInvalidateOnAnimation();
   requestLayout();postInvalidateOnAnimation();
-  web.evaluateJavascript("(function(){window.dispatchEvent(new Event('resize'));requestAnimationFrame(()=>requestAnimationFrame(()=>{window.__magdiPictureRefresh=(window.__magdiPictureRefresh||0)+1;}));var v=document.querySelector('video');return JSON.stringify({hasVideo:!!v,paused:v?v.paused:null,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,hidden:document.hidden});})()",value->{if(!closed)Diagnostics.event("Picture refresh requested: "+value);});
+  web.evaluateJavascript("(function(){window.dispatchEvent(new Event('resize'));requestAnimationFrame(()=>requestAnimationFrame(()=>{window.__magdiPictureRefresh=(window.__magdiPictureRefresh||0)+1;}));var v=document.querySelector('video'),r=v?v.getBoundingClientRect():null;return JSON.stringify({hasVideo:!!v,paused:v?v.paused:null,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,hidden:document.hidden,viewportWidth:innerWidth,viewportHeight:innerHeight,videoBoxWidth:r?Math.round(r.width):0,videoBoxHeight:r?Math.round(r.height):0,documentFullscreen:!!document.fullscreenElement});})()",value->{if(!closed)Diagnostics.event("Picture refresh native="+getWidth()+"x"+getHeight()+" web="+web.getWidth()+"x"+web.getHeight()+" custom="+(fullscreen!=null)+" page="+value);});
   if(!visualStatePending){visualStatePending=true;web.postVisualStateCallback(android.os.SystemClock.uptimeMillis(),new WebView.VisualStateCallback(){public void onComplete(long id){visualStatePending=false;if(!closed&&active){web.postInvalidateOnAnimation();if(fullscreen!=null)fullscreen.postInvalidateOnAnimation();}}});}
  }
 
@@ -76,7 +77,7 @@ public final class TubeView extends LinearLayout {
      PlaybackCoordinator.observe(TubeView.this,state.optBoolean("playing")&&!state.optBoolean("muted")&&state.optInt("ready")>0);
      if(phoneSuppressed)return;
      if(!active&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
-     if(detailed){state.put("sampleDelayMs",late);state.put("callbackMs",android.os.SystemClock.uptimeMillis()-started);state.put("fullscreen",fullscreen!=null);state.put("pictureRefreshes",pictureRefreshCount);pictureRefreshCount=0;
+     if(detailed){state.put("sampleDelayMs",late);state.put("callbackMs",android.os.SystemClock.uptimeMillis()-started);state.put("fullscreen",fullscreen!=null);state.put("webWidth",web.getWidth());state.put("webHeight",web.getHeight());state.put("viewWidth",getWidth());state.put("viewHeight",getHeight());state.put("pictureRefreshes",pictureRefreshCount);pictureRefreshCount=0;
       Runtime runtime=Runtime.getRuntime();state.put("appJavaHeapMiB",(runtime.totalMemory()-runtime.freeMemory())/1048576);
       Diagnostics.event("Playback source="+(phone?"phone":"car")+" instance="+instance+" visible="+active+" "+state);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
     }catch(org.json.JSONException ignored){}
@@ -101,12 +102,12 @@ public final class TubeView extends LinearLayout {
  
  addView(bar,new LinearLayout.LayoutParams(-1,dp(52)));
  progress=new ProgressBar(c,null,android.R.attr.progressBarStyleHorizontal);progress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff45dfcc));addView(progress,new LinearLayout.LayoutParams(-1,dp(2)));
- status=new TextView(c);status.setTextColor(0xffffcf8a);status.setPadding(dp(12),dp(6),dp(12),dp(6));status.setVisibility(GONE);addView(status);
+ status=new TextView(c);status.setTextColor(0xffffcf8a);status.setPadding(dp(12),dp(6),dp(12),dp(6));setContentVisibility(status,GONE);addView(status);
  web=new WebView(c){@Override protected void onWindowVisibilityChanged(int visibility){
  // Preserve the existing media document during a temporary host cover (for example reverse camera).
  if(visibility!=View.VISIBLE&&background&&!closed)coverPlayback();
  super.onWindowVisibilityChanged(background&&!closed&&!accountPage&&!phoneSuppressed?View.VISIBLE:visibility);
- }};web.setBackgroundColor(Color.BLACK);addView(web,new LinearLayout.LayoutParams(-1,0,1));
+ }};web.setBackgroundColor(Color.BLACK);content=new FrameLayout(c);content.addView(web,new FrameLayout.LayoutParams(-1,-1));addView(content,new LinearLayout.LayoutParams(-1,0,1));
  CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
  web.getSettings().setJavaScriptEnabled(true);web.getSettings().setDomStorageEnabled(true);
  web.getSettings().setAllowFileAccess(false);web.getSettings().setAllowContentAccess(false);
@@ -114,19 +115,21 @@ public final class TubeView extends LinearLayout {
  web.setWebChromeClient(new WebChromeClient(){
  public void onShowCustomView(View view,CustomViewCallback callback){showFullscreen(view,callback);}
  public void onHideCustomView(){hideFullscreen();}
- public void onProgressChanged(WebView v,int value){progress.setProgress(value);progress.setVisibility(value==100?INVISIBLE:VISIBLE);}});
+ public void onProgressChanged(WebView v,int value){progress.setProgress(value);setContentVisibility(progress,value==100?INVISIBLE:VISIBLE);}});
  web.setWebViewClient(new WebViewClient(){
  public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){
  Uri uri=r.getUrl();String host=uri.getHost();boolean auth=GoogleAccountNavigation.allowed(uri);
  if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من Magdi Tube على الموبايل ثم اضغط تحديث":"Sign in using Magdi Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
  boolean block=!allowed(uri)&&!(phone&&auth);
- if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));status.setVisibility(VISIBLE);CookiePersistence.request();}return block;
- } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);status.setVisibility(GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
+ if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));setContentVisibility(status,VISIBLE);CookiePersistence.request();}return block;
+ } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);setContentVisibility(status,GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
  public void onPageFinished(WebView v,String u){back.setEnabled(v.canGoBack()||fullscreen!=null);CookiePersistence.request();Diagnostics.event(accountPage?"Account page loaded; authentication not verified":"Page loaded; cookie persistence queued");if(!accountPage){AdAssist.apply(v);try{v.evaluateJavascript(AdAssist.asset(c,"playback_state.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_artwork.js"),null);v.evaluateJavascript(AdAssist.asset(c,"media_transport.js"),null);v.evaluateJavascript(AdAssist.asset(c,"playback_sample.js"),null);if(phoneSuppressed)v.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.suppress(true)",null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}}}
- public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame()){Diagnostics.event("Main frame error code="+e.getErrorCode());status.setText(ar?"تعذر الاتصال. تحقق من الإنترنت واضغط تحديث.":"Unable to connect. Check your internet and tap Reload.");status.setVisibility(VISIBLE);}}
+ public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame()){Diagnostics.event("Main frame error code="+e.getErrorCode());status.setText(ar?"تعذر الاتصال. تحقق من الإنترنت واضغط تحديث.":"Unable to connect. Check your internet and tap Reload.");setContentVisibility(status,VISIBLE);}}
  });
  back.setEnabled(false);back.setOnClickListener(v->handleBack());
  home.setOnClickListener(v->web.loadUrl("https://m.youtube.com/"));reload.setOnClickListener(v->{AdAssist.configure(web);web.reload();});
+ reload.setContentDescription(ar?"تحديث؛ اضغط مطولًا لإعادة تهيئة الشاشة وفتح الرئيسية":"Reload; hold to reset the screen and open Home");
+ reload.setOnLongClickListener(v->{if(phone){Diagnostics.event("Phone view reset requested by user");((android.app.Activity)c).recreate();}else if(!CarPlaybackSession.reset(this))return false;Toast.makeText(c,ar?"تمت إعادة تهيئة الشاشة؛ افتح الفيديو من جديد":"Screen reset; open your video again",Toast.LENGTH_LONG).show();return true;});
  Button search=button(ar?"بحث":"Search",ar?"البحث في YouTube":"Search YouTube");
  bar.addView(search,new LinearLayout.LayoutParams(-2,dp(48)));search.setOnClickListener(v->showSearch());
  if(!phone){
@@ -141,7 +144,7 @@ public final class TubeView extends LinearLayout {
  Button ads=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ad blocker: ON"):(ar?"منع الإعلانات: متوقف":"Ad blocker: OFF"),ar?"منع الإعلانات التجريبي":"Experimental ad blocking");
  Button audio=button(ar?"صوت الخلفية":"Background audio",ar?"تشغيل أو إيقاف صوت الخلفية":"Toggle background audio");
  audio.setOnClickListener(v->{background=!background;c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
- Button logs=button(ar?"تصدير اللوج":"Export log",ar?"مشاركة تقرير التشخيص":"Share diagnostic report");
+ Button logs=button(ar?"جلسات اللوج":"Log sessions",ar?"نسخ أو تصدير جلسة اللوج":"Copy or export a log session");
  Button setup=button(ar?"إعداد Android Auto":"Android Auto setup",ar?"فحص وإعداد مصدر التثبيت":"Check and configure installation source");
  setup.setOnClickListener(v->c.startActivity(new android.content.Intent(c,InstallSetupActivity.class)));
  for(Button b:new Button[]{setup,account,subscriptions,ads,audio,logs})actions.addView(b,new LinearLayout.LayoutParams(-2,dp(48)));
@@ -149,7 +152,7 @@ public final class TubeView extends LinearLayout {
  account.setOnClickListener(v->new android.app.AlertDialog.Builder(c).setTitle(ar?"تسجيل دخول تجريبي":"Experimental sign-in").setMessage(ar?"تدخل بياناتك في صفحة Google. قد ترفض Google المتصفح المضمّن. لا نغيّر هوية المتصفح ولا نقرأ كلمات المرور. بعد النجاح افتح الاشتراكات، ثم تحديث على شاشة السيارة. لا تمسح بيانات التطبيق إن أردت الاحتفاظ بالجلسة.":"Enter your credentials only on Google's page. Google may reject this embedded browser. We do not change browser identity or read passwords. After success, check Subscriptions, then Reload on the car. Clearing app data removes the session.").setNegativeButton(ar?"إلغاء":"Cancel",null).setPositiveButton(ar?"متابعة":"Continue",(d,w)->{Diagnostics.event("Account flow opened on phone");web.loadUrl("https://m.youtube.com/signin");}).show());
  subscriptions.setOnClickListener(v->web.loadUrl("https://m.youtube.com/feed/subscriptions"));
  ads.setOnClickListener(v->{AdAssist.toggle(c);AdAssist.configure(web);ads.setText(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ad blocker: ON"):(ar?"منع الإعلانات: متوقف":"Ad blocker: OFF"));if(!accountPage){AdAssist.apply(web);web.reload();}Toast.makeText(c,ar?"حدّث صفحة السيارة لتطبيق التغيير. لا يضمن منع جميع الإعلانات.":"Reload the car page to apply. Experimental; complete blocking is not guaranteed.",Toast.LENGTH_LONG).show();});
- logs.setOnClickListener(v->Diagnostics.export((android.app.Activity)c));
+ logs.setOnClickListener(v->Diagnostics.open((android.app.Activity)c));
  }
  PlaybackCoordinator.register(this);AdAssist.configure(web);web.loadUrl("https://m.youtube.com/");
  }
@@ -195,8 +198,13 @@ public final class TubeView extends LinearLayout {
  }
  void prepareDetach(){pause();hideFullscreen();hideSearch();}
  boolean handleBack(){if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
- private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}}
- private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();}
+ private void setContentVisibility(View view,int visibility){if(hiddenViews.containsKey(view))hiddenViews.put(view,visibility);else view.setVisibility(visibility);}
+ private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);if(child==content)continue;hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}
+  // Keep the WebView measured at the full content size while an overlay owns input.
+  // GONE formerly removed it from layout, leaving a retained document with a stale viewport.
+  web.setVisibility(INVISIBLE);
+ }
+ private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();web.setVisibility(VISIBLE);content.requestLayout();schedulePictureRefresh();}
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
   if(fullscreen!=null){callback.onCustomViewHidden();return;}hideSearch();hideChildren();fullscreenCallback=callback;
   fullscreen=new FrameLayout(getContext()){
@@ -211,14 +219,14 @@ public final class TubeView extends LinearLayout {
   ImageButton exit=new ImageButton(getContext());exit.setImageResource(R.drawable.ic_fullscreen_close);exit.setContentDescription(ar?"الخروج من ملء الشاشة":"Exit fullscreen");exit.setBackgroundResource(R.drawable.fullscreen_close_background);exit.setPadding(dp(14),dp(14),dp(14),dp(14));exit.setScaleType(ImageView.ScaleType.FIT_CENTER);exit.setElevation(0);exit.setStateListAnimator(null);
   // A 36 dp translucent circle inside a 48 dp touch target; keep the physical left edge in RTL too.
   FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);p.leftMargin=dp(2);fullscreen.addView(exit,p);exit.setOnClickListener(v->hideFullscreen());
-  addView(fullscreen,new LinearLayout.LayoutParams(-1,0,1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
+  content.addView(fullscreen,new FrameLayout.LayoutParams(-1,-1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
  }
- private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
- private void hideSearch(){if(searchPanel==null)return;removeView(searchPanel);searchPanel=null;restoreChildren();}
+ private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;content.removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
+ private void hideSearch(){if(searchPanel==null)return;content.removeView(searchPanel);searchPanel=null;restoreChildren();}
  private Button largeActionButton(String text,String description,int minWidth){Button b=button(text,description);b.setTextSize(18);b.setMinWidth(dp(minWidth));b.setMinimumWidth(dp(minWidth));b.setPadding(dp(20),0,dp(20),0);return b;}
  private void showSearch(){
   hideFullscreen();if(searchPanel!=null)return;hideChildren();
-  LinearLayout panel=new LinearLayout(getContext());panel.setOrientation(VERTICAL);panel.setPadding(dp(8),0,dp(8),0);searchPanel=panel;
+  LinearLayout panel=new LinearLayout(getContext());panel.setBackgroundColor(0xff0b1220);panel.setOrientation(VERTICAL);panel.setPadding(dp(8),0,dp(8),0);searchPanel=panel;
   LinearLayout row=new LinearLayout(getContext());EditText input=new EditText(getContext());input.setTextColor(Color.WHITE);input.setSingleLine(true);input.setHint(ar?"ابحث في YouTube":"Search YouTube");input.setHintTextColor(0xffaaaaaa);input.setShowSoftInputOnFocus(phone);row.addView(input,new LinearLayout.LayoutParams(0,dp(56),1));
   Button go=largeActionButton(ar?"بحث":"Go",ar?"بحث":"Search",112),cancel=largeActionButton(ar?"إغلاق":"Close",ar?"إغلاق البحث":"Close search",96);for(Button b:new Button[]{go,cancel}){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(56));p.setMarginStart(dp(4));row.addView(b,p);}panel.addView(row);
   Runnable submit=()->{String q=input.getText().toString().trim();if(q.isEmpty())return;hideSearch();web.loadUrl("https://m.youtube.com/results?search_query="+Uri.encode(q));Diagnostics.event("Search submitted; query not logged");};
@@ -230,8 +238,8 @@ public final class TubeView extends LinearLayout {
     LinearLayout controls=new LinearLayout(getContext());Button lang=button(arabic[0]?"English":"عربي","Keyboard language"),space=button(ar?"مسافة":"Space","Space"),del=button("⌫","Delete");for(Button b:new Button[]{lang,space,del})controls.addView(b,new LinearLayout.LayoutParams(0,-1,1));keys.addView(controls,new LinearLayout.LayoutParams(-1,0,1));lang.setOnClickListener(v->{arabic[0]=!arabic[0];render[0].run();});space.setOnClickListener(v->input.getText().insert(Math.max(0,input.getSelectionStart())," "));del.setOnClickListener(v->{int pos=input.getSelectionStart();if(pos>0)input.getText().delete(pos-1,pos);});
    };render[0].run();
   }
-  addView(panel,new LinearLayout.LayoutParams(-1,0,1));input.requestFocus();
+  content.addView(panel,new FrameLayout.LayoutParams(-1,-1));input.requestFocus();
   if(phone)input.postDelayed(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT),150);
  }
- void close(){closed=true;active=false;PlaybackCoordinator.forget(this);invalidateSample();timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);MediaCardService.forget(this);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);removeView(web);web.destroy();}
+ void close(){closed=true;active=false;PlaybackCoordinator.forget(this);invalidateSample();timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);MediaCardService.forget(this);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);content.removeView(web);web.destroy();}
 }

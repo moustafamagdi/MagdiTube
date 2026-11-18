@@ -11,6 +11,7 @@
 <application tools:ignore="MissingIntentFilterForMediaSearch" android:name=".Diagnostics" android:label="Magdi Tube" android:icon="@drawable/ic_tube" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false" android:usesCleartextTraffic="false" android:hardwareAccelerated="true" android:enableOnBackInvokedCallback="false">
 <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
 <activity android:name=".InstallSetupActivity" android:exported="false"/>
+<activity android:name=".DiagnosticsActivity" android:exported="false"/>
 <receiver android:name=".InstallResultReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
 <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
 <service android:name=".MediaCardService" android:icon="@drawable/ic_tube_audio" android:exported="true" android:label="Magdi Tube Audio"><intent-filter><action android:name="android.media.browse.MediaBrowserService"/></intent-filter></service>

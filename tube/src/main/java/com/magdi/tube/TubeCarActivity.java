@@ -6,4 +6,5 @@ public final class TubeCarActivity extends com.google.android.apps.auto.sdk.CarA
  public void onStart(){super.onStart();if(page!=null&&CarPlaybackSession.isHost(this))page.resume();}
  public void onStop(){if(page!=null&&CarPlaybackSession.isHost(this))page.pause();super.onStop();}
  public void onDestroy(){if(page!=null)CarPlaybackSession.detach(this);super.onDestroy();}
+ void replacePage(){page=CarPlaybackSession.attach(this,this);setContentView(page);page.resume();}
 }

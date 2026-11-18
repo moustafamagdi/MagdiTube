@@ -12,7 +12,11 @@ The phone app supports search, fullscreen and optional sign-in. Background audio
 
 Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **Magdi Tube Audio** entry controls existing playback and shows video information and available playback actions.
 
-The phone app can export diagnostics for playback and connectivity issues. Regional Google account redirects are supported using an exact list of official Google domains; sign-in remains phone-only.
+On the phone, **Log sessions** lets you copy or export a selected recording part, or start a new session before testing. New app processes and car connections start sessions; car reconnections within five minutes share the same session. Long sessions split into 128 KiB parts. The app keeps the latest 40 parts for up to seven days, removing older parts during recording or when opening the list. Saved exports outside the app are unaffected.
+
+If the screen becomes stuck or unusually small, hold **Reload** to rebuild the view and return to YouTube Home without clearing your account cookies. Fullscreen uses an overlay that preserves the underlying page's measured size; diagnostics record native and page dimensions to investigate device-specific failures. This recovery closes current playback; open the video again.
+
+Regional Google account redirects are supported using an exact list of official Google domains; sign-in remains phone-only.
 
 ## Build and test
 
