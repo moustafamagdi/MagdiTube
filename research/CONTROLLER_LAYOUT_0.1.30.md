@@ -30,3 +30,7 @@ Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a
 2. Select video and press Stop during loading, then during playback: car returns Home and the cancelled video never starts again.
 3. Check portrait/landscape controls and More > Log sessions/Account/Android Auto setup.
 4. Confirm observed Play/Pause dimming, seeking/fullscreen, disconnect during loading and no autoplay after reconnect.
+
+## Publication verification
+
+Published tag v0.1.30-controller-layout at ec1cd4c. GitHub verifier run [44285567991](https://github.com/moustafamagdi/MagdiTube/actions/runs/44285567991) succeeded and set the APK asset label to versionCode=31. The downloaded public APK matched the local SHA-256 above and apksigner verified the existing certificate; aapt confirmed package/code/version. The unchanged MM Auto Releases.java parser passed its published-feed regression: selects the exact asset/URL/digest/code, offers an update from code 30, and refuses an update over codes 31 or 32. This is a parser/JVM check, not a physical MM Auto UI test.
