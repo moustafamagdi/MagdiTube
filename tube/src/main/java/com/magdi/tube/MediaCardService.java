@@ -81,7 +81,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   updateArtwork(now?state.art:null);
   ThumbnailCache.Art details=now?state.art:null;
   String title=details!=null&&!details.title.isEmpty()?details.title:(ar()?"صوت الفيديو الحالي":"Current video audio");
-  String author=details!=null&&!details.author.isEmpty()?details.author:now?"Magdi Tube":(ar()?"اختر فيديو في Magdi Tube أولًا":"Choose a video in Magdi Tube first");
+  String author=details!=null&&!details.author.isEmpty()?details.author:now?"MM Tube":(ar()?"اختر فيديو في MM Tube أولًا":"Choose a video in MM Tube first");
   String icon=artworkUri().toString();boolean changed=!metadataPublished||now!=available||!icon.equals(publishedArtwork)||!title.equals(publishedTitle)||!author.equals(publishedAuthor);
   if(changed){metadataPublished=true;publishedArtwork=icon;publishedTitle=title;publishedAuthor=author;session.setMetadata(new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,CURRENT).putString(MediaMetadataCompat.METADATA_KEY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ART_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,icon).build());}
   long actions=now?PlaybackStateCompat.ACTION_PLAY|PlaybackStateCompat.ACTION_PAUSE|PlaybackStateCompat.ACTION_PLAY_PAUSE|PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID:0;

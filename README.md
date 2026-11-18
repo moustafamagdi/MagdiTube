@@ -1,4 +1,4 @@
-# Magdi Tube
+# MM Tube
 
 Android Auto YouTube player with a phone browsing and remote-control interface. Package: `com.magdi.tube`.
 
@@ -8,7 +8,7 @@ Download the APK from [GitHub Releases](https://github.com/moustafamagdi/MagdiTu
 
 From **0.1.25**, the phone is a controller only: browse, search and sign in there, then select a video for the available car player. The native panel shows connection, actual video title, state and progress, with play/pause, stop, seek, supported next/previous, retry and car fullscreen. Selections without an available car are rejected immediately and never queued.
 
-Open Magdi Tube on Android Auto before selecting a video. Leaving/closing its car interface or disconnecting stops playback and cancels pending requests. Reopening does not resume automatically; make a fresh selection. Closing the phone interface leaves an available car player running.
+Open MM Tube on Android Auto before selecting a video. Leaving/closing its car interface or disconnecting stops playback and cancels pending requests. Reopening does not resume automatically; make a fresh selection. Closing the phone interface leaves an available car player running.
 
 The phone uses a separate WebView profile, native renderer mute, native media-request rejection and Android-injected HTML response CSP (including data/blob media). Service-worker network access is blocked in that profile. Unsupported WebView features disable phone browsing and request a WebView update. The car remains the only playback and audio-service target.
 
@@ -18,7 +18,7 @@ Ad filtering remains experimental. The embedded car keyboard, King Installer set
 
 ## Android Auto
 
-Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **Magdi Tube Audio** entry controls existing playback and shows video information and available playback actions.
+Projection uses a legacy integration and compatibility varies with the host and device. The car interface includes an Arabic/English search keyboard. The separate **MM Tube Audio** entry controls existing playback and shows video information and available playback actions.
 
 On the phone, **Log sessions** lets you copy or export a selected recording part, or start a new session before testing. New app processes and car connections start sessions; car reconnections within five minutes share the same session. Long sessions split into 128 KiB parts. The app keeps the latest 40 parts for up to seven days, removing older parts during recording or when opening the list. Saved exports outside the app are unaffected.
 

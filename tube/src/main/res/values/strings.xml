@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name" translatable="false">MM Tube</string>
+    <string name="audio_app_name" translatable="false">MM Tube Audio</string>
+</resources>
