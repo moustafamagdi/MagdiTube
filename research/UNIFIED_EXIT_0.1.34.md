@@ -17,3 +17,7 @@ SHA-256: 9f1bc1864c37cd14610a9f0ca1aae3b1394b99823d503d2dd5a25eaeb9c0e6b2.
 Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a5ab65.
 
 Device check: update without uninstalling. Enter fullscreen from the phone and then from YouTube on the car; confirm the same circular exit at left-center and that pressing it returns without restarting the video.
+
+Publication: v0.1.34-unified-exit at cc29f2e via successful [Actions run 44331847809](https://github.com/moustafamagdi/MagdiTube/actions/runs/44331847809). The temporary upload branch verified the already-signed APK using GitHub's built-in token; no local signing/authentication secrets were uploaded, and its remote branch/worktree was removed after success.
+
+The downloaded public APK matched the local SHA-256, existing certificate and expected package/code/version. releases/latest returned this non-preview release with MM-Tube-0.1.34.apk labeled versionCode=35. The unchanged MM Auto Releases.java parser passed against the published JSON, selecting the expected URL/digest/code, offering an update from code 34 and rejecting updates over codes 35/36. This is an additional JVM parser check, not a physical MM Auto UI test.
