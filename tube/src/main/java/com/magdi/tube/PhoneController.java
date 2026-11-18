@@ -35,7 +35,7 @@ final class PhoneController extends LinearLayout {
   double position=p==null?0:p.optDouble("time",0);duration=p==null?0:p.optDouble("duration",0);
   state.setText(label+(video?" • "+clock(position)+" / "+clock(duration):""));title.setText(p==null?"":p.optString("title"));
   seek.setEnabled(connected&&video&&duration>0&&p.optBoolean("seekable"));if(!dragging)seek.setProgress(duration>0?(int)(position*1000/duration):0);
-  for(Map.Entry<String,Button> entry:buttons.entrySet()){String a=entry.getKey();boolean enabled=connected&&video;if(a.equals("stop"))enabled=connected;if(a.equals("retry"))enabled=connected&&s.optBoolean("retry");if(a.equals("next")||a.equals("previous"))enabled&=p!=null&&p.optBoolean(a);if(a.equals("forward")||a.equals("rewind"))enabled&=seek.isEnabled();entry.getValue().setEnabled(enabled);}
+  for(Map.Entry<String,Button> entry:buttons.entrySet()){String a=entry.getKey();boolean enabled=connected&&video;if(a.equals("play"))enabled&=p!=null&&!p.optBoolean("playing");if(a.equals("pause"))enabled&=p!=null&&p.optBoolean("playing");if(a.equals("stop"))enabled=connected;if(a.equals("retry"))enabled=connected&&s.optBoolean("retry");if(a.equals("next")||a.equals("previous"))enabled&=p!=null&&p.optBoolean(a);if(a.equals("forward")||a.equals("rewind"))enabled&=seek.isEnabled();entry.getValue().setEnabled(enabled);}
  }
  private int dp(int value){return (int)(value*getResources().getDisplayMetrics().density+0.5f);}
  private String clock(double seconds){if(!Double.isFinite(seconds)||seconds<0)return "--:--";return String.format(Locale.ROOT,"%d:%02d",(long)seconds/60,(long)seconds%60);}

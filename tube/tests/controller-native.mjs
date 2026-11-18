@@ -17,13 +17,13 @@ try{
  await until(car,"document.querySelector('video')?.currentTime>0.5&&!document.querySelector('video').paused");
  await until(phone,"JSON.parse(Harness.state()).playback.title==='Fixture AAAAAAAAAAA'");
  assert.equal(await car("return location.hash"),'');
- await until(phone,"JSON.parse(Harness.controls()).Pause&&JSON.parse(Harness.controls()).Play&&JSON.parse(Harness.controls())['Car fullscreen']");
+ await until(phone,"JSON.parse(Harness.controls()).Pause&&!JSON.parse(Harness.controls()).Play&&JSON.parse(Harness.controls())['Car fullscreen']");
  pass('Fragment-free navigation acknowledges the selected player and enables actual native phone controls');
  assert.equal(await car("return document.querySelector('video').getVideoPlaybackQuality().totalVideoFrames>0"),true);pass('Phone selection decodes video in the car and reports actual title/progress');
  assert.equal(await phone("return !document.querySelector('video')&&location.pathname==='/'"),true);pass('Phone remains on browsing page without local playback');
- await phone("Harness.command('pause',0)");await until(car,"document.querySelector('video').paused");await until(phone,"JSON.parse(Harness.state()).phase==='paused'");
+ await phone("Harness.command('pause',0)");await until(car,"document.querySelector('video').paused");await until(phone,"JSON.parse(Harness.state()).phase==='paused'&&JSON.parse(Harness.controls()).Play&&!JSON.parse(Harness.controls()).Pause");
  await phone("Harness.command('seek',10)");await until(car,"document.querySelector('video').currentTime>=9.5");
- await phone("Harness.command('play',0)");await until(car,"!document.querySelector('video').paused");pass('Pause, seek and play operate the car with synchronized state');
+ await phone("Harness.command('play',0)");await until(car,"!document.querySelector('video').paused");await until(phone,"JSON.parse(Harness.controls()).Pause&&!JSON.parse(Harness.controls()).Play");pass('Pause, seek and play operate the car; Play/Pause buttons dim according to observed state');
  assert.equal(await phone("return Harness.command('next',0)"),'false');assert.equal(await phone("return Harness.command('previous',0)"),'false');pass('Unsupported next/previous are refused');
  await car("const p=document.createElement('div');p.id='movie_player';p.getPlayerResponse=()=>ytInitialPlayerResponse;document.body.append(p);for(const [cls,id] of [['ytp-next-button','BBBBBBBBBBB'],['ytp-prev-button','AAAAAAAAAAA']]){const b=document.createElement('button');b.className=cls;p.append(b);b.onclick=()=>{history.pushState({},'', '/watch?v='+id);ytInitialPlayerResponse.videoDetails={videoId:id,title:'Fixture '+id,author:'Test'};document.querySelector('video').currentTime=0;document.querySelector('video').play();};}");
  await until(phone,'JSON.parse(Harness.state()).playback.next');await phone("Harness.command('next',0)");await until(phone,"JSON.parse(Harness.state()).playback.title==='Fixture BBBBBBBBBBB'");await phone("Harness.command('previous',0)");await until(phone,"JSON.parse(Harness.state()).playback.title==='Fixture AAAAAAAAAAA'");pass('Supported next/previous use the actual player controls and update the phone');
@@ -32,7 +32,7 @@ try{
  await until(car,"!!document.fullscreenElement");
  const fullTime=await phone("return JSON.parse(Harness.state()).playback.time");
  await until(phone,`JSON.parse(Harness.state()).playback.time>${fullTime}+2&&JSON.parse(Harness.controls()).Pause`);
- await phone("Harness.command('pause',0)");await until(car,"document.querySelector('video').paused");await until(phone,"JSON.parse(Harness.state()).phase==='paused'");
+ await phone("Harness.command('pause',0)");await until(car,"document.querySelector('video').paused");await until(phone,"JSON.parse(Harness.state()).phase==='paused'&&JSON.parse(Harness.controls()).Play&&!JSON.parse(Harness.controls()).Pause");
  await phone("Harness.command('play',0)");await until(car,"!document.querySelector('video').paused");
  await car("await document.exitFullscreen()");pass('Native WebView video fullscreen preserves phone status, progress and play/pause controls');
  await phone("Harness.command('stop',0)");await until(car,"!document.querySelector('video')");pass('Stop unloads the car media document');
