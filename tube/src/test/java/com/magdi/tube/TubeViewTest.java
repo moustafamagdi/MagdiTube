@@ -37,14 +37,14 @@ public class TubeViewTest {
  }
  @Test public void searchBackRestoresToolbar(){button(view,"Search").performClick();assertTrue(view.handleBack());assertEquals(View.VISIBLE,view.getChildAt(0).getVisibility());}
 
- @Test public void temporaryCoverDoesNotExplicitlyPauseWebViewWhenBackgroundEnabled() throws Exception {
+ @Test public void closingCarStopsEvenWhenBackgroundEnabled() throws Exception {
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
-  view.pause();assertFalse(shadowOf((WebView)field.get(view)).wasOnPauseCalled());
+  view.resume();CarController.ready(view);view.pause();assertTrue(shadowOf((WebView)field.get(view)).wasOnPauseCalled());assertEquals("about:blank",shadowOf((WebView)field.get(view)).getLastLoadedUrl());assertFalse(CarController.available());
  }
  @Test public void keepAliveDoesNotTakeAudioFocusOrPausePlayer() throws Exception {
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
   org.robolectric.shadows.ShadowWebView web=shadowOf((WebView)field.get(view));
-  String before=web.getLastEvaluatedJavascript();
+  view.resume();CarController.ready(view);shadowOf(android.os.Looper.getMainLooper()).idle();String before=web.getLastEvaluatedJavascript();
   PlaybackService.keep(view);
   PlaybackService service=Robolectric.buildService(PlaybackService.class).create().get();
   try {
@@ -103,7 +103,7 @@ public class TubeViewTest {
   // Progress callbacks must not bring the hidden toolbar strip into fullscreen layout.
   shadowOf(web).getWebChromeClient().onProgressChanged(web,25);measure(1024,600);
   assertEquals(1024,web.getMeasuredWidth());assertEquals(600,web.getMeasuredHeight());
-  view.pause();view.resume();measure(1024,600);assertEquals(600,web.getMeasuredHeight());
+  view.pause();view.resume();measure(1024,600);assertEquals(View.VISIBLE,web.getVisibility());assertTrue(web.getMeasuredHeight()<600);
   view.handleBack();measure(800,480);assertEquals(View.VISIBLE,web.getVisibility());assertEquals(normalHeight,web.getMeasuredHeight());
  }
  @Test public void searchOverlayAlsoPreservesWebViewportAndRestoresIt(){

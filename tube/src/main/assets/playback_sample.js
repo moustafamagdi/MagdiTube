@@ -13,6 +13,7 @@
  window.__magdiSample=function(detailed,artwork){
   const v=document.querySelector('video'),c=counters(v);
   const result={playing:!!v&&!v.paused&&!v.ended,time:v?Math.round(v.currentTime):0,ready:v?v.readyState:0,muted:v?v.muted:false,resumeWanted:window.__magdiPlayback?window.__magdiPlayback.state().wanted:false};
+  if(window.__magdiCar)result.controller=window.__magdiCar.state();
   if(artwork)result.artwork=window.__magdiArtwork?window.__magdiArtwork():null;
   if(detailed){
    let q=null;try{q=v&&typeof v.getVideoPlaybackQuality==='function'?v.getVideoPlaybackQuality():null;}catch(e){}

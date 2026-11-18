@@ -5,7 +5,7 @@ import android.content.MutableContextWrapper;
 import android.view.ContextThemeWrapper;
 import android.view.ViewGroup;
 
-/** One car document survives replacement of the host activity. */
+/** Retain the browser shell; never retain playback across host loss. */
 final class CarPlaybackSession {
  private static TubeView page;
  private static MutableContextWrapper context;
@@ -15,10 +15,11 @@ final class CarPlaybackSession {
  static TubeView attach(Context car,Object token){
   if(!hasCarSession||(host==null&&android.os.SystemClock.elapsedRealtime()-detachedAt>=300000)){Diagnostics.startSession("Car");hasCarSession=true;}
   if(page==null){context=new MutableContextWrapper(car);page=new TubeView(context);Diagnostics.event("Car playback session created");}
-  else {context.setBaseContext(car);Diagnostics.event("Car playback session reused");}
+  else {if(host!=token)page.pause();context.setBaseContext(car);Diagnostics.event("Car playback session reused");}
   if(page.getParent() instanceof ViewGroup)((ViewGroup)page.getParent()).removeView(page);
   host=token;return page;
  }
+ static void connectionLost(){if(page!=null)page.pause();}
  static boolean isHost(Object token){return host==token;}
  static void detach(Object token){
   if(host!=token||page==null)return;
@@ -26,7 +27,7 @@ final class CarPlaybackSession {
   if(page.getParent() instanceof ViewGroup)((ViewGroup)page.getParent()).removeView(page);
   Context app=context.getApplicationContext();context.setBaseContext(new ContextThemeWrapper(app,android.R.style.Theme_Material_NoActionBar));host=null;
   detachedAt=android.os.SystemClock.elapsedRealtime();
-  Diagnostics.event("Car host detached; playback session retained");
+  Diagnostics.event("Car host detached; idle browser retained, playback cancelled");
  }
  static boolean reset(TubeView requester){
   if(page!=requester||!(host instanceof TubeCarActivity))return false;

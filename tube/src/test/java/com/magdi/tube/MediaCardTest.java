@@ -25,7 +25,7 @@ public class MediaCardTest {
   @org.robolectric.annotation.Implementation protected void setPlaybackState(android.media.session.PlaybackState state){published=state;stateWrites++;}
  }
  private Activity activity;private TubeView car,phone;private MediaCardService service;
- @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);service=Robolectric.buildService(MediaCardService.class).create().get();}
+ @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);car.resume();CarController.ready(car);service=Robolectric.buildService(MediaCardService.class).create().get();}
  @After public void cleanup(){service.onDestroy();car.close();phone.close();activity.finish();}
  private org.robolectric.shadows.ShadowWebView web(TubeView view)throws Exception{java.lang.reflect.Field f=TubeView.class.getDeclaredField("web");f.setAccessible(true);return shadowOf((WebView)f.get(view));}
  private PlaybackStateCompat state(){return PlaybackStateCompat.fromPlaybackState(CapturedSession.published);}
@@ -44,7 +44,7 @@ public class MediaCardTest {
  }
  @Test public void mutedPhonePreviewDoesNotStealCarControls()throws Exception{
   MediaCardService.observe(phone,true,true,true,1000);assertNull(MediaCardService.target());
-  MediaCardService.observe(phone,true,false,true,2000);assertSame(phone,MediaCardService.target());
+  MediaCardService.observe(phone,true,false,true,2000);assertNull(MediaCardService.target());
   MediaCardService.observe(car,true,false,true,5000);assertSame(car,MediaCardService.target());
   MediaCardService.observe(phone,true,true,true,3000);service.command(false);
   assertSame(car,MediaCardService.target());assertTrue(web(car).getLastEvaluatedJavascript().contains("v.pause()"));assertFalse(String.valueOf(web(phone).getLastEvaluatedJavascript()).contains("v.pause()"));

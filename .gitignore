@@ -19,3 +19,5 @@ research/video-review/
 research/DEVICE_TEST_*.md
 research/*.kt
 research/*.json
+
+controller-*.log

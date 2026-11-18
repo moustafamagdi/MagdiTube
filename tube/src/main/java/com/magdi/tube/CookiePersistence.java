@@ -2,9 +2,9 @@ package com.magdi.tube;
 
 import java.util.concurrent.*;
 
-/** Coalesces disk flushes off the UI thread without clearing or copying cookies. */
+/** Coalesces disk flushes off the UI thread without clearing cookies. */
 final class CookiePersistence {
- private static final CookiePersistence shared=new CookiePersistence(Executors.newSingleThreadScheduledExecutor(r->new Thread(()->{android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);r.run();},"MagdiCookieIO")),()->android.webkit.CookieManager.getInstance().flush(),500);
+ private static final CookiePersistence shared=new CookiePersistence(Executors.newSingleThreadScheduledExecutor(r->new Thread(()->{android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);r.run();},"MagdiCookieIO")),ControllerCookies::flush,500);
  private final ScheduledExecutorService worker;
  private final Runnable flush;
  private final long delay;

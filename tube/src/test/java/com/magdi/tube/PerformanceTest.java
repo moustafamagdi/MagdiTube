@@ -19,7 +19,7 @@ public class PerformanceTest {
   @Implementation protected void evaluateJavascript(String script,ValueCallback<String> callback){super.evaluateJavascript(script,callback);scripts.add(script);if(script.startsWith("window.__magdiSample"))samples.add(callback);}
  }
  private Activity activity;private TubeView car,phone;
- @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);}
+ @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();car=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));phone=new TubeView(activity);car.resume();CarController.ready(car);}
  @After public void close(){car.close();phone.close();activity.finish();}
  private Object field(TubeView view,String name)throws Exception{java.lang.reflect.Field f=TubeView.class.getDeclaredField(name);f.setAccessible(true);return f.get(view);}
  private ObservedWebView web(TubeView v)throws Exception{return (ObservedWebView)shadowOf((WebView)field(v,"web"));}
@@ -31,11 +31,11 @@ public class PerformanceTest {
   ((Runnable)field(car,"sample")).run();ValueCallback<String> old=web(car).samples.get(0);car.resume();
   old.onReceiveValue(org.json.JSONObject.quote("{\"playing\":true,\"time\":12,\"ready\":4,\"muted\":false,\"resumeWanted\":true}"));assertNull(MediaCardService.target());
  }
- @Test public void onlyHiddenPhoneYieldsAndReturningDoesNotAutoplay()throws Exception{
-  phone.resume();PlaybackCoordinator.observe(car,true);assertFalse((Boolean)field(phone,"phoneSuppressed"));
-  String carScript=web(car).getLastEvaluatedJavascript();phone.pause();assertTrue((Boolean)field(phone,"phoneSuppressed"));assertTrue(web(phone).wasOnPauseCalled());assertEquals(carScript,web(car).getLastEvaluatedJavascript());
-  int samples=web(phone).samples.size();((Runnable)field(phone,"sample")).run();assertEquals(samples,web(phone).samples.size());
-  car.pauseMedia();assertTrue((Boolean)field(phone,"phoneSuppressed"));phone.resume();assertFalse((Boolean)field(phone,"phoneSuppressed"));assertFalse((Boolean)field(phone,"pendingResume"));assertTrue(web(phone).getLastEvaluatedJavascript().contains("suppress(false)"));
+ @Test public void phoneNeverSamplesOrControlsCarEvenWhenClosed()throws Exception{
+  phone.resume();String before=web(car).getLastEvaluatedJavascript();phone.pause();assertTrue(web(phone).wasOnPauseCalled());
+  ((Runnable)field(phone,"sample")).run();assertEquals(0,web(phone).samples.size());
+  phone.playFromMediaCard();assertEquals(before,web(car).getLastEvaluatedJavascript());assertTrue(CarController.available());
+  phone.resume();assertFalse((Boolean)field(phone,"pendingResume"));assertEquals(0,web(phone).samples.size());
  }
  @Test public void repeatedFocusEventsProduceOneBoundedPictureRefreshBurst()throws Exception{
   activity.setContentView(car);car.resume();for(int i=0;i<20;i++)car.onWindowFocusChanged(true);

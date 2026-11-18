@@ -36,6 +36,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   observe(view,playing,muted,ready,position,null);
  }
  static void observe(TubeView view,boolean playing,boolean muted,boolean ready,long position,ThumbnailCache.Art art){
+  if(!view.isCarView())return;
   State old=observations.put(view,new State(playing,muted,ready,position,art));TubeView current=selected.get();
   // Muted feed previews must not take the car video's controls. Keep a paused target.
   if(ready&&!muted&&(current==null||(!current.isCarView()&&view.isCarView()))){selected=new WeakReference<>(view);Diagnostics.event("Media card target selected: "+(view.isCarView()?"car":"phone"));}
@@ -56,7 +57,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   session.setCallback(new MediaSessionCompat.Callback(){
    public void onPlay(){command(true);}
    public void onPause(){command(false);}
-   public void onStop(){command(false);}
+   public void onStop(){CarController.command("stop",0,CarController.epoch());}
    public void onSkipToNext(){skip(true);}
    public void onSkipToPrevious(){skip(false);}
    public void onPlayFromMediaId(String id,Bundle extras){if(CURRENT.equals(id))command(true);}
