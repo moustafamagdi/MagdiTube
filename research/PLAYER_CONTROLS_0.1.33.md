@@ -30,3 +30,9 @@ Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a
 ## Physical check
 
 Update over the installed app. Select a video, use Car fullscreen on the phone and touch the car picture to reveal controls. Try YouTube Pause/Play and seeking, exit/re-enter, then cover/return. Check picture/audio continuity on your actual car. Disconnect/reconnect must not autoplay. Copy the new Car log if controls or the picture do not return.
+
+## Publication verification
+
+Published v0.1.33-player-controls at 193f0ab via [GitHub Actions run 44330369534](https://github.com/moustafamagdi/MagdiTube/actions/runs/44330369534). The isolated upload branch verified the signed APK, source tag, package/code/certificate and downloaded hash with GitHub's built-in token. No local signing/authentication secrets were uploaded; the temporary remote branch/worktree was removed after success. No upload workflow or APK was added to main.
+
+Public releases/latest returned the new non-preview release with MM-Tube-0.1.33.apk labeled versionCode=34. Downloaded APK hash matched the local APK and GitHub digest above. apksigner and aapt verified the existing certificate and package/code/version. The unchanged MM Auto Releases.java parser passed against the published feed, selecting the exact filename/URL/digest/code, offering the update from code 33 and refusing updates over code 34/35. This is a JVM parser check, not a physical MM Auto UI test.
