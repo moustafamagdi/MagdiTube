@@ -30,3 +30,9 @@ Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a
 Update over the existing app. Open the car player and select a video from the phone. Tap Car fullscreen, verify the picture and continued audio, then exit and repeat. Test Pause/Play, a different video, and covering/returning to the car view. Stop must return Home; actual disconnection/reconnection must not autoplay. If the picture is still black, copy/export the new Car session to identify the host/WebView-specific behavior.
 
 Signed 0.1.31 -> 0.1.32 install-r upgrade passed on the emulator without uninstalling; the existing private app-data sentinel survived. aapt/dumpsys confirmed package and code 33.
+
+## Publication verification
+
+Published v0.1.32-controller-fullscreen at a817678 using [GitHub Actions run 44327108029](https://github.com/moustafamagdi/MagdiTube/actions/runs/44327108029). The isolated upload branch verified the already-signed APK before publishing with GitHub's built-in token; no signing secrets were uploaded and no APK/upload workflow was added to main. Its temporary remote branch/worktree was removed after success.
+
+Public releases/latest returned this non-preview release, with MM-Tube-0.1.32.apk labeled versionCode=33. The downloaded APK, local APK and GitHub asset digest matched the SHA-256 above; apksigner verified the unchanged certificate and aapt confirmed package, code and version. The unchanged MM Auto Releases.java parser passed against the actual published JSON, selecting the exact URL/digest/code, offering an update from code 32 and rejecting updates over codes 33/34. This is an additional JVM parser test, not a physical MM Auto UI check.
