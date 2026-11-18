@@ -36,6 +36,16 @@ public class TubeViewTest {
   assertEquals(View.VISIBLE,view.getChildAt(0).getVisibility());
  }
  @Test public void searchBackRestoresToolbar(){button(view,"Search").performClick();assertTrue(view.handleBack());assertEquals(View.VISIBLE,view.getChildAt(0).getVisibility());}
+ @Test public void rejectedUnreadySampleReleasesSlotWithoutReleasingNewerSample()throws Exception{
+  CarController.attach(view);long epoch=CarController.epoch(),request=CarController.request();
+  java.lang.reflect.Field generation=TubeView.class.getDeclaredField("sampleGeneration"),inFlight=TubeView.class.getDeclaredField("sampleInFlight");
+  generation.setAccessible(true);inFlight.setAccessible(true);generation.setLong(view,7);inFlight.setBoolean(view,true);
+  java.lang.reflect.Method accept=TubeView.class.getDeclaredMethod("acceptSample",long.class,long.class,long.class);accept.setAccessible(true);
+  assertEquals(false,accept.invoke(view,7L,epoch,request));assertFalse(inFlight.getBoolean(view));
+  CarController.ready(view);generation.setLong(view,8);inFlight.setBoolean(view,true);
+  assertEquals(false,accept.invoke(view,7L,epoch,request));assertTrue(inFlight.getBoolean(view));
+  assertEquals(true,accept.invoke(view,8L,epoch,request));assertFalse(inFlight.getBoolean(view));
+ }
 
  @Test public void closingCarStopsEvenWhenBackgroundEnabled() throws Exception {
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);

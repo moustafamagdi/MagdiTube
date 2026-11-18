@@ -13,6 +13,7 @@ final class CarController {
  private static Player car;
  private static long epoch,request;
  private static boolean ready;
+ private static boolean selectionAcknowledged;
  private static VideoSelection selection;
  private static JSONObject playback=new JSONObject();
  private static String phase="disconnected";
@@ -35,7 +36,7 @@ final class CarController {
  static boolean select(String url,long expectedEpoch){
   VideoSelection next=VideoSelection.parse(url);
   if(!available()||expectedEpoch!=epoch||next==null)return false;
-  selection=next;request++;playback=new JSONObject();phase="sending";
+  selection=next;selectionAcknowledged=false;request++;playback=new JSONObject();phase="sending";
   car.selectController(next,epoch,request);Diagnostics.event("Controller selection accepted; content not logged");return true;
  }
  static boolean command(String action,double value,long expectedEpoch){
@@ -49,13 +50,18 @@ final class CarController {
  }
  static void loading(Player view,long e,long r){if(accepts(view,e,r))phase="loading";}
  static void failed(Player view,long e,long r){if(accepts(view,e,r))phase="error";}
- static void report(Player view,long e,long r,JSONObject state){
-  if(!accepts(view,e,r))return;
+ static String report(Player view,long e,long r,JSONObject state){
+  if(!accepts(view,e,r))return "stale-connection";
   // A previous document cannot acknowledge a new selection (including selecting A, B, A).
-  if(selection!=null&&!state.optString("token").equals(e+"_"+r))return;
+  if(!state.optString("token").equals(selection==null?"":e+"_"+r))return "document-mismatch";
+  if(selection!=null&&!selectionAcknowledged){
+   if(!selection.id.equals(state.optString("id"))||!state.optBoolean("hasVideo")||state.optInt("ready")==0)return "awaiting-selected-player";
+   selectionAcknowledged=true;
+  }
   playback=state;
   if(!state.optBoolean("hasVideo")&&("playing".equals(phase)||"paused".equals(phase)))phase="idle";
   if(state.optInt("ready")>0&&state.optBoolean("hasVideo"))phase=state.optBoolean("playing")?"playing":"paused";
+  return "accepted";
  }
  static JSONObject state(){
   JSONObject out=new JSONObject();try{out.put("epoch",epoch).put("request",request).put("connected",available()).put("phase",phase).put("retry",selection!=null).put("playback",new JSONObject(playback.toString()));}catch(org.json.JSONException ignored){}return out;

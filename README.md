@@ -47,3 +47,9 @@ Run `ControllerHarnessActivity` in a debug APK, forward `localabstract:webview_d
 Physical-car acceptance, actual sound/routing, projected fullscreen sizing, interruptions/reconnect behavior on the Samsung device, and real Google account sign-in still require device testing. The emulator does not establish Android Auto host compatibility or audible sound in the car.
 
 A signed release upgrade from 0.1.24 to 0.1.25 was installed successfully on the emulator without uninstalling the old release; an existing app-data file remained byte-for-byte unchanged. The release certificate matches the existing application.
+
+## Controller state recovery (0.1.27)
+
+Car documents now receive their request binding from Android at document start, instead of a URL fragment that YouTube can rewrite before the playback helper runs. The first report must match the selected player; older document/connection reports are rejected, including after Stop. Rejected or missing sample callbacks no longer leave polling permanently occupied. Diagnostic events report acceptance/rejection reasons without video identities, titles, URLs or request tokens.
+
+Validation: the new JavaScript regression fails on the old fragment-based helper and passes with native document binding. 62 Robolectric tests, eight JavaScript suites and release Lint pass. The Android 36 / WebView 133 emulator passes 17 native scenarios, including fragment-free navigation, actual phone-button enablement, native WebView video fullscreen with advancing progress and working Play/Pause, rapid selection, Stop, disconnect during loading, reconnect without autoplay, and native phone media blocking. The test player is synthetic; this does not establish the fix on Samsung WebView 157 / Android Auto. That final reproduction needs the same device/host session from the report.

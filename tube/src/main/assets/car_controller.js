@@ -1,7 +1,8 @@
 (()=>{
  if(window.__magdiCar)return;
  let wanted=null,attempt=0;
- const documentToken=new URLSearchParams(location.hash.slice(1)).get('magdi_request')||'';
+ // Captured by Android at document start. YouTube can remove/change the URL fragment.
+ const documentToken=typeof window.__magdiCarLease==='string'?window.__magdiCarLease:'';
  const token=()=>documentToken;
  const identity=()=>{try{return window.__magdiArtwork?.()||null;}catch(_){return null;}};
  const valid=()=>wanted&&token()===wanted.token&&new URL(location.href).searchParams.get('v')===wanted.id;
@@ -17,7 +18,7 @@
    else if(action==='next'||action==='previous'){const art=identity();return !!art&&window.__magdiTransport?.skip(art.id,action==='next')==='requested';}
    return true;
   },
-  state(){const v=document.querySelector('video'),art=identity();return {token:token(),hasVideo:!!v,ready:v?v.readyState:0,playing:!!v&&!v.paused&&!v.ended,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
+  state(){const v=document.querySelector('video'),art=identity();return {token:token(),id:art?.id||'',hasVideo:!!v,ready:v?v.readyState:0,playing:!!v&&!v.paused&&!v.ended,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
  };
  const timer=setInterval(()=>{
   if(!wanted)return;
