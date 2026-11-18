@@ -33,7 +33,7 @@ public class ControllerFullscreenTest {
  }
  @Test public void successfulEntryKeepsWebSurfaceVisibleAndExitRestoresChrome()throws Exception {
   enter().onReceiveValue("true");assertEquals(true,field("controllerFullscreen"));assertEquals(View.VISIBLE,web.getVisibility());assertEquals(View.GONE,car.getChildAt(0).getVisibility());
-  assertTrue(car.handleBack());assertEquals(false,field("controllerFullscreen"));assertEquals(View.VISIBLE,web.getVisibility());assertEquals(View.VISIBLE,car.getChildAt(0).getVisibility());
+  assertTrue(car.findViewWithTag("controller-fullscreen-exit").performClick());assertEquals(false,field("controllerFullscreen"));assertEquals(View.VISIBLE,web.getVisibility());assertEquals(View.VISIBLE,car.getChildAt(0).getVisibility());
  }
  @Test public void rapidSecondTapInvalidatesFirstAcknowledgement()throws Exception {
   ValueCallback<String> result=enter();enter();result.onReceiveValue("true");assertEquals(false,field("controllerFullscreen"));assertEquals(false,field("controllerFullscreenRequested"));assertEquals(View.VISIBLE,car.getChildAt(0).getVisibility());

@@ -244,7 +244,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
    if(generation!=controllerFullscreenGeneration||!controllerFullscreenRequested)return;
    if(!"true".equals(value)){controllerFullscreenRequested=false;Diagnostics.event("Car fullscreen unavailable; original layout retained");return;}
    controllerFullscreen=true;hideChrome();
-   Button exit=button(ar?"خروج":"Exit","Exit car fullscreen");exit.setTag("controller-fullscreen-exit");content.addView(exit,new FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP|Gravity.LEFT));exit.setOnClickListener(v->hideControllerFullscreen());
+   addFullscreenExit(content,"controller-fullscreen-exit",this::hideControllerFullscreen);
    content.requestLayout();schedulePictureRefresh();Diagnostics.event("Controller fullscreen entered");
   });
  }
@@ -291,6 +291,12 @@ public final class TubeView extends LinearLayout implements CarController.Player
   web.setVisibility(INVISIBLE);
  }
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();web.setVisibility(VISIBLE);content.requestLayout();schedulePictureRefresh();}
+ // Shared visual and touch target for remote and YouTube-native fullscreen.
+ private void addFullscreenExit(FrameLayout parent,String tag,Runnable onExit){
+  ImageButton exit=new ImageButton(getContext());exit.setImageResource(R.drawable.ic_fullscreen_close);exit.setContentDescription(ar?"الخروج من ملء الشاشة":"Exit fullscreen");exit.setBackgroundResource(R.drawable.fullscreen_close_background);exit.setPadding(dp(14),dp(14),dp(14),dp(14));exit.setScaleType(ImageView.ScaleType.FIT_CENTER);exit.setElevation(0);exit.setStateListAnimator(null);
+  // A 36 dp translucent circle inside a 48 dp touch target; keep the physical left edge in RTL too.
+  FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);p.leftMargin=dp(2);parent.addView(exit,p);exit.setTag(tag);exit.setOnClickListener(v->onExit.run());
+ }
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
   if(fullscreen!=null){callback.onCustomViewHidden();return;}hideControllerFullscreen();hideSearch();hideChildren();fullscreenCallback=callback;
   fullscreen=new FrameLayout(getContext()){
@@ -302,9 +308,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
     if(visibility==VISIBLE&&!closed)scheduleFullscreenReturn();
    }
   };fullscreen.setBackgroundColor(Color.BLACK);fullscreen.addView(view,new FrameLayout.LayoutParams(-1,-1));
-  ImageButton exit=new ImageButton(getContext());exit.setImageResource(R.drawable.ic_fullscreen_close);exit.setContentDescription(ar?"الخروج من ملء الشاشة":"Exit fullscreen");exit.setBackgroundResource(R.drawable.fullscreen_close_background);exit.setPadding(dp(14),dp(14),dp(14),dp(14));exit.setScaleType(ImageView.ScaleType.FIT_CENTER);exit.setElevation(0);exit.setStateListAnimator(null);
-  // A 36 dp translucent circle inside a 48 dp touch target; keep the physical left edge in RTL too.
-  FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);p.leftMargin=dp(2);fullscreen.addView(exit,p);exit.setOnClickListener(v->hideFullscreen());
+  addFullscreenExit(fullscreen,"native-fullscreen-exit",this::hideFullscreen);
   content.addView(fullscreen,new FrameLayout.LayoutParams(-1,-1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
  }
  private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;FrameLayout frame=fullscreen;fullscreen=null;content.removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}

@@ -12,6 +12,8 @@ Open MM Tube on Android Auto before selecting a video. From **0.1.31**, temporar
 
 From **0.1.33**, the phone's **Car fullscreen** action expands the active YouTube player including its own controls, without moving or reloading the video. Touch the picture to reveal YouTube's controls. Only the selected player's ancestor path is expanded; unrelated containers stay outside the fullscreen display. Unknown layouts use reversible browser video controls. This remains a remote page-layout mode, distinct from YouTube's native fullscreen action, which can require a gesture inside the car document.
 
+From **0.1.34**, both fullscreen entry paths share the same translucent circular × exit button at the physical left-center edge, with a 48 dp touch target.
+
 The phone uses a separate WebView profile, native renderer mute, native media-request rejection and Android-injected HTML response CSP (including data/blob media). Service-worker network access is blocked in that profile. Unsupported WebView features disable phone browsing and request a WebView update. The car remains the only playback and audio-service target.
 
 Existing YouTube cookies migrate into the phone profile once; selections synchronize YouTube cookies and deletions back to the car via native APIs, preserving cookie attributes. Google login cookies remain in the phone profile. Cookie synchronization is **not** a claim that car authentication or playback succeeded: status comes from the actual car player. Google may reject embedded sign-in. No passwords, cookie values or session tokens are logged.
