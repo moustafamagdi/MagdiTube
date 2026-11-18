@@ -24,3 +24,11 @@ Rejected reports now exit before all consumers. A current leased document with a
 No real YouTube playback or physical Android Auto run was performed for this change. Emulator results do not establish Samsung Android 17/WebView 157 compatibility, car sound/routing, authentication or projected rendering. No software was installed on the attached physical phone.
 
 Update without clearing data. With the car parked, open MM Tube on Android Auto; select a video from the phone and check Play/Pause dimming, seek and fullscreen progress. Try rapid A/B/A and repeated loading taps. Pause before covering/restoring the player. Disconnect while loading; reconnect must not autoplay. Closing the phone must leave available car playback running. Copy a fresh log session if behavior differs.
+
+## Published artifact verification
+
+The stable GitHub release is v0.1.29-controller-hardening. Downloading its APK reproduced the local SHA-256 above; apksigner verified the downloaded file against the existing signing certificate. GitHub asset name is MM-Tube-0.1.29.apk and its actual asset label is versionCode=30 (not only release-note text).
+
+The release metadata workflow independently downloaded the APK, checked GitHub's digest, verified the certificate/package and read versionCode from its manifest before applying the label. [Successful verification run](https://github.com/moustafamagdi/MagdiTube/actions/runs/44282801767).
+
+An additional passing Robolectric test compiled the existing MM Auto Releases.java source unchanged against the live releases/latest JSON: it selects 0.1.29/code 30, accepts upgrading code 29 or a missing installation, rejects an already-installed code 30 and a newer code 31, and checks the exact asset URL and digest. This verifies MM Auto's selection logic; it is not a physical-phone UI installation test.
