@@ -6,6 +6,7 @@ final class CarController {
  interface Player {
   boolean isCarView();
   void cancelController();
+  default void stopController(){cancelController();}
   void selectController(VideoSelection video,long epoch,long request);
   void commandController(String action,double value,long epoch,long request);
  }
@@ -44,8 +45,8 @@ final class CarController {
  }
  // Stop is connection-wide, including when issued from an older selection display.
  static boolean stop(long expectedEpoch){
-  if(!available()||epoch!=expectedEpoch)return false;
-  request++;selection=null;clear();phase="idle";car.cancelController();return true;
+  if(!available()||epoch!=expectedEpoch||!canStop())return false;
+  request++;selection=null;clear();phase="idle";car.stopController();return true;
  }
  static boolean command(String action,double value,long expectedEpoch,long expectedRequest,long expectedOwner){
   if(!available()||expectedEpoch!=epoch)return false;
@@ -55,6 +56,7 @@ final class CarController {
   if(!can(action))return false;
   car.commandController(action,value,epoch,request);return true;
  }
+ static boolean canStop(){return available()&&(selection!=null||(fresh()&&playback.optBoolean("hasVideo")&&playback.optInt("ready")>0&&!playback.optString("id").isEmpty()));}
  static boolean can(String action){
   if(!fresh()||!playback.optBoolean("hasVideo")||playback.optInt("ready")==0||"error".equals(phase)||"loading".equals(phase))return false;
   switch(action){

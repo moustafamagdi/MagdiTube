@@ -8,11 +8,14 @@ async function until(run,expression){for(let i=0;i<100;i++){try{if(await run('re
 function pass(name){checks.push(name);console.log('PASS '+name);}
 try{
  const phone=await client('Phone Controller'),car=await client('Car Fixture'),probe=await client('Native CSP Probe');
+ await until(phone,'JSON.parse(Harness.state()).connected');assert.equal(await phone('return JSON.parse(Harness.controls()).Stop'),false);assert.equal(await phone("return Harness.command('stop',0)"),'false');assert.equal(await car("return location.pathname==='/'"),true);pass('Idle Stop is disabled and rejected without blanking car Home');
+
  await until(probe,"violations.filter(v=>v.directive==='media-src').length>=3");
  assert.equal(await probe("return HTMLMediaElement.prototype.play.toString().includes('[native code]')&&[...document.querySelectorAll('video')].every(v=>v.paused&&v.getVideoPlaybackQuality().totalVideoFrames===0)"),true);pass('Android response CSP blocks network, data and blob video without any JS media overrides');
  await until(phone,'JSON.parse(Harness.state()).connected&&window.__magdiPhoneEpoch>=0');
  assert.equal(await phone('return Harness.muted()'),'true');pass('Android renderer mute is enforced on the phone');
  assert.equal(await phone('return Harness.cookies()'),'true');pass('Native cookie transfer preserves HttpOnly/Secure and propagates deletion');
+ await phone("document.querySelectorAll('a')[2].click()");await until(phone,'JSON.parse(Harness.controls()).Stop');await phone("Harness.command('stop',0)");await sleep(2400);assert.equal(await car("return location.pathname==='/'&&!document.querySelector('video')"),true);assert.equal(await phone('return JSON.parse(Harness.controls()).Stop'),false);pass('Stop during loading returns car Home and cancels late start');
  await phone("document.querySelector('a').click()");
  await until(car,"document.querySelector('video')?.currentTime>0.5&&!document.querySelector('video').paused");
  await until(phone,"JSON.parse(Harness.state()).playback.title==='Fixture AAAAAAAAAAA'");

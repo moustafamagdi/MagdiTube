@@ -168,25 +168,25 @@ public final class TubeView extends LinearLayout implements CarController.Player
  Button search=button(ar?"بحث":"Search",ar?"البحث في YouTube":"Search YouTube");
  bar.addView(search,new LinearLayout.LayoutParams(-2,dp(48)));search.setOnClickListener(v->showSearch());
  if(!phone){
- Button carAds=button(AdAssist.enabled(c)?(ar?"حجب: يعمل":"Block: ON"):(ar?"حجب: متوقف":"Block: OFF"),ar?"تشغيل أو إيقاف منع الإعلانات":"Toggle ad blocking");
+ Button carAds=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"),ar?"تشغيل أو إيقاف منع الإعلانات":"Toggle ad blocking");
  bar.addView(carAds,new LinearLayout.LayoutParams(-2,dp(48)));
- carAds.setOnClickListener(v->{AdAssist.toggle(c);carAds.setText(AdAssist.enabled(c)?(ar?"حجب: يعمل":"Block: ON"):(ar?"حجب: متوقف":"Block: OFF"));AdAssist.configure(web);AdAssist.apply(web);web.reload();});
+ carAds.setOnClickListener(v->{AdAssist.toggle(c);carAds.setText(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"));AdAssist.configure(web);AdAssist.apply(web);web.reload();});
  }
  if(phone){
- LinearLayout actions=new LinearLayout(c);actions.setGravity(Gravity.CENTER_VERTICAL);
+ reload.setVisibility(GONE);
+ Button more=button(ar?"المزيد":"More",ar?"الحساب والإعدادات واللوج":"Account, settings and logs");bar.addView(more,new LinearLayout.LayoutParams(-2,dp(48)));
  Button account=button(ar?"الحساب":"Account",ar?"تسجيل YouTube التجريبي":"Experimental YouTube sign-in");
  Button subscriptions=button(ar?"اشتراكاتي":"Subscriptions",ar?"قنواتي المشترَك بها":"Subscribed channels");
- Button ads=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ad blocker: ON"):(ar?"منع الإعلانات: متوقف":"Ad blocker: OFF"),ar?"منع الإعلانات التجريبي":"Experimental ad blocking");
+ Button ads=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"),ar?"منع الإعلانات التجريبي":"Experimental ad blocking");
  Button audio=button(ar?"صوت الخلفية":"Background audio",ar?"تشغيل أو إيقاف صوت الخلفية":"Toggle background audio");
  audio.setOnClickListener(v->{background=!background;c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
  Button logs=button(ar?"جلسات اللوج":"Log sessions",ar?"نسخ أو تصدير جلسة اللوج":"Copy or export a log session");
  Button setup=button(ar?"إعداد Android Auto":"Android Auto setup",ar?"فحص وإعداد مصدر التثبيت":"Check and configure installation source");
  setup.setOnClickListener(v->c.startActivity(new android.content.Intent(c,InstallSetupActivity.class)));
- for(Button b:new Button[]{setup,account,subscriptions,ads,audio,logs})actions.addView(b,new LinearLayout.LayoutParams(-2,dp(48)));
- HorizontalScrollView scroller=new HorizontalScrollView(c);scroller.addView(actions);addView(scroller,1,new LinearLayout.LayoutParams(-1,dp(50)));
+ more.setOnClickListener(v->{PopupMenu menu=new PopupMenu(c,more);Button[] options={subscriptions,account,reload,ads,audio,setup,logs};for(int i=0;i<options.length;i++)menu.getMenu().add(0,i,i,options[i].getText());menu.getMenu().add(0,7,7,ar?"إعادة تهيئة الشاشة":"Reset browsing screen");menu.setOnMenuItemClickListener(item->{if(item.getItemId()==7)reload.performLongClick();else options[item.getItemId()].performClick();return true;});menu.show();});
  account.setOnClickListener(v->new android.app.AlertDialog.Builder(c).setTitle(ar?"تسجيل دخول تجريبي":"Experimental sign-in").setMessage(ar?"تدخل بياناتك في صفحة Google. قد ترفض Google المتصفح المضمّن. لا نغيّر هوية المتصفح ولا نقرأ كلمات المرور. بعد النجاح افتح الاشتراكات، ثم تحديث على شاشة السيارة. لا تمسح بيانات التطبيق إن أردت الاحتفاظ بالجلسة.":"Enter your credentials only on Google's page. Google may reject this embedded browser. We do not change browser identity or read passwords. After success, check Subscriptions, then Reload on the car. Clearing app data removes the session.").setNegativeButton(ar?"إلغاء":"Cancel",null).setPositiveButton(ar?"متابعة":"Continue",(d,w)->{Diagnostics.event("Account flow opened on phone");web.loadUrl("https://m.youtube.com/signin");}).show());
  subscriptions.setOnClickListener(v->web.loadUrl("https://m.youtube.com/feed/subscriptions"));
- ads.setOnClickListener(v->{AdAssist.toggle(c);AdAssist.configure(web);ads.setText(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ad blocker: ON"):(ar?"منع الإعلانات: متوقف":"Ad blocker: OFF"));if(!accountPage){AdAssist.apply(web);web.reload();}Toast.makeText(c,ar?"حدّث صفحة السيارة لتطبيق التغيير. لا يضمن منع جميع الإعلانات.":"Reload the car page to apply. Experimental; complete blocking is not guaranteed.",Toast.LENGTH_LONG).show();});
+ ads.setOnClickListener(v->{AdAssist.toggle(c);AdAssist.configure(web);ads.setText(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"));if(!accountPage){AdAssist.apply(web);web.reload();}Toast.makeText(c,ar?"حدّث صفحة السيارة لتطبيق التغيير. لا يضمن منع جميع الإعلانات.":"Reload the car page to apply. Experimental; complete blocking is not guaranteed.",Toast.LENGTH_LONG).show();});
  logs.setOnClickListener(v->Diagnostics.open((android.app.Activity)c));
  }
  if(phone){
@@ -210,6 +210,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  boolean carAvailable(){return !phone&&active&&!closed&&CarController.accepts(this,CarController.epoch(),CarController.request());}
  private void nativeMute(boolean muted){if(androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.MUTE_AUDIO))androidx.webkit.WebViewCompat.setAudioMuted(web,muted);}
  public void cancelController(){selectionToken="";selectedId="";CarDocumentLease.install(web,"");invalidateSample();pendingResume=false;resumeCommandGeneration++;nativeMute(true);web.stopLoading();web.evaluateJavascript("window.__magdiCar?.cancel();window.__magdiPlayback?.stop();document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);clearPlaybackConsumers();hideFullscreen();hideControllerFullscreen();web.loadUrl("about:blank");MediaCardService.forget(this);PlaybackService.release(this);}
+ public void stopController(){cancelController();if(carAvailable())web.loadUrl("https://m.youtube.com/");}
  public void selectController(VideoSelection video,long epoch,long request){
   cancelController();selectionEpoch=epoch;selectionRequest=request;selectedId=video.id;selectionToken=epoch+"_"+request;if(!CarDocumentLease.install(web,selectionToken)||!ControllerCookies.toCar()){CarController.failed(this,epoch,request);return;}CookiePersistence.request();
   timer.postDelayed(()->{if(!CarController.accepts(this,epoch,request)||closed||!active)return;CarController.loading(this,epoch,request);web.loadUrl(video.url);},150);

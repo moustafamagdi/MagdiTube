@@ -55,6 +55,7 @@ public class TubeViewTest {
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
   org.robolectric.shadows.ShadowWebView web=shadowOf((WebView)field.get(view));
   view.resume();CarController.ready(view);shadowOf(android.os.Looper.getMainLooper()).idle();String before=web.getLastEvaluatedJavascript();
+  CarController.report(view,CarController.epoch(),CarController.request(),new org.json.JSONObject().put("token","").put("document","fixture").put("id","AAAAAAAAAAA").put("hasVideo",true).put("ready",4).put("playing",true));
   PlaybackService.keep(view);
   PlaybackService service=Robolectric.buildService(PlaybackService.class).create().get();
   try {

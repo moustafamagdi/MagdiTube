@@ -67,3 +67,11 @@ Controls distinguish playing, paused, buffering, ended and media errors. Play/Pa
 Late cover/resume callbacks cannot restore intent after Pause, Stop, replacement or disconnection. Repeated taps on an already-loading selection preserve its start; A/B/A still uses a fresh final request. No IPTV local-player allocation mechanism is used.
 
 Validation and limits: [0.1.29 verification](research/CONTROLLER_HARDENING_0.1.29.md).
+
+## Compact controller and Stop recovery (0.1.30)
+
+Phone controls now reflow into two rows on narrow screens and one row when wide enough, without horizontal transport scrolling. Play/Pause remain separate, observed-state buttons with disabled dimming. Account, Subscriptions, Reload, Ads block, Background audio, Android Auto setup and Log sessions are under **More**. **More > Reset browsing screen** preserves the previous phone long-press Reload reset. Car Back/Home/Reload/Search remain visible; the ad control reads **Ads block: ON/OFF**.
+
+Stop is disabled when there is no selection or observed car media. It cancels a selected/loading/current video and returns the connected car to YouTube Home. A repeated idle Stop is a no-op. Disconnect still cancels and unloads without queuing playback; Stop stays connection-wide and cannot cross reconnection.
+
+Validation details and limits: [0.1.30 test record](research/CONTROLLER_LAYOUT_0.1.30.md).
