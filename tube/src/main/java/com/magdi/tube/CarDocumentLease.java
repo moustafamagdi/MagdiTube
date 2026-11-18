@@ -13,7 +13,7 @@ final class CarDocumentLease {
   release(web);
   if(!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT))return false;
   try{
-   String js="if(window===window.top&&!Object.prototype.hasOwnProperty.call(window,'__magdiCarLease'))Object.defineProperty(window,'__magdiCarLease',{value:"+org.json.JSONObject.quote(token)+",writable:false,configurable:false});";
+   String js="if(window===window.top&&!Object.prototype.hasOwnProperty.call(window,'__magdiCarLease'))Object.defineProperty(window,'__magdiCarLease',{value:"+org.json.JSONObject.quote(token)+",writable:false,configurable:false});if(window===window.top&&!window.__magdiCarDocument)Object.defineProperty(window,'__magdiCarDocument',{value:Date.now().toString(36)+Math.random().toString(36),writable:false,configurable:false});";
    scripts.put(web,WebViewCompat.addDocumentStartJavaScript(web,js,new HashSet<>(Arrays.asList("https://youtube.com","https://www.youtube.com","https://m.youtube.com"))));return true;
   }catch(RuntimeException e){Diagnostics.event("Car document binding unavailable");return false;}
  }

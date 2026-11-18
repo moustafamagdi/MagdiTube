@@ -93,7 +93,7 @@ public class TubeViewTest {
  }
 
  @Test public void fullscreenCoveragePreservesCustomVideoVisibility() throws Exception {
-  activity.setContentView(view);view.resume();
+  activity.setContentView(view);view.resume();CarController.ready(view);CarController.report(view,CarController.epoch(),CarController.request(),new org.json.JSONObject().put("token","").put("document","fixture").put("hasVideo",true).put("ready",4).put("playing",true));
   java.lang.reflect.Method show=TubeView.class.getDeclaredMethod("showFullscreen",View.class,WebChromeClient.CustomViewCallback.class);show.setAccessible(true);
   int[] delivered={-1};View video=new View(activity){protected void onWindowVisibilityChanged(int visibility){super.onWindowVisibilityChanged(visibility);delivered[0]=visibility;}};
   show.invoke(view,video,(WebChromeClient.CustomViewCallback)()->{});

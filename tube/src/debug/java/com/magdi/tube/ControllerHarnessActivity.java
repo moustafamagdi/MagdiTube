@@ -29,7 +29,7 @@ public final class ControllerHarnessActivity extends Activity {
   private String ui(java.util.concurrent.Callable<String> action){FutureTask<String> task=new FutureTask<>(action);runOnUiThread(task);try{return task.get(10,java.util.concurrent.TimeUnit.SECONDS);}catch(Exception e){return "error";}}
   @JavascriptInterface public String state(){return ui(()->CarController.state().toString());}
   @JavascriptInterface public String controls(){return ui(()->{org.json.JSONObject out=new org.json.JSONObject();for(String label:new String[]{"Play","Pause","Stop","Previous","Next","Car fullscreen"}){Button button=findButton(phone,label);out.put(label,button!=null&&button.isEnabled());}return out.toString();});}
-  @JavascriptInterface public String command(String action,double value){return ui(()->String.valueOf(CarController.command(action,value,CarController.epoch())));}
+  @JavascriptInterface public String command(String action,double value){return ui(()->String.valueOf(CarController.command(action,value,CarController.epoch(),CarController.request(),CarController.owner())));}
   @JavascriptInterface public String toggleCar(){return ui(()->{toggle();return "ok";});}
   @JavascriptInterface public String closePhone(){return ui(()->{phoneOpen=false;phone.pause();phone.setVisibility(android.view.View.GONE);return "ok";});}
   @JavascriptInterface public String muted(){return ui(()->String.valueOf(androidx.webkit.WebViewCompat.isAudioMuted(phoneWeb)));}
@@ -53,13 +53,14 @@ public final class ControllerHarnessActivity extends Activity {
    if(isPhone&&PhoneMediaPolicy.blocked(r.getUrl()))return PhoneMediaPolicy.denied();
    if(r.getUrl().getPath().equals("/fixture.mp4"))try{byte[] bytes;try(InputStream in=getAssets().open("fixture.mp4");ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] block=new byte[8192];int n;while((n=in.read(block))!=-1)out.write(block,0,n);bytes=out.toByteArray();}
     String range=r.getRequestHeaders().get("Range");int start=0,end=bytes.length-1;if(range!=null&&range.startsWith("bytes=")){String[] parts=range.substring(6).split("-");start=Integer.parseInt(parts[0]);if(parts.length>1)end=Math.min(end,Integer.parseInt(parts[1]));}
+    if(start>=bytes.length||end<start)return new WebResourceResponse("video/mp4",null,416,"Range Not Satisfiable",Collections.singletonMap("Content-Range","bytes */"+bytes.length),new ByteArrayInputStream(new byte[0]));
     Map<String,String> headers=new HashMap<>();headers.put("Accept-Ranges","bytes");headers.put("Content-Length",String.valueOf(end-start+1));if(range!=null)headers.put("Content-Range","bytes "+start+"-"+end+"/"+bytes.length);
     return new WebResourceResponse("video/mp4",null,range==null?200:206,range==null?"OK":"Partial Content",headers,new ByteArrayInputStream(bytes,start,end-start+1));}catch(IOException e){return PhoneMediaPolicy.denied();}
    if(!r.isForMainFrame())return PhoneMediaPolicy.denied();
    String id=r.getUrl().getQueryParameter("v");if("SSSSSSSSSSS".equals(id))try{Thread.sleep(1800);}catch(InterruptedException ignored){}
    String body="<!doctype html><meta name='viewport' content='width=device-width'><title>"+(isPhone?"Phone Controller":"Car Fixture")+"</title><style>body{background:#182030;color:white}a{display:block;padding:20px;color:cyan}</style><h3>Fixture browsing</h3><a href='/watch?v=AAAAAAAAAAA'>Video A</a><a href='/watch?v=BBBBBBBBBBB'>Video B</a><a href='/watch?v=SSSSSSSSSSS'>Slow video</a>";
    if(id!=null)body+="<script>history.replaceState({},\"\",location.pathname+location.search);</script>";
-   if(id!=null)body+="<div id='player'><video id='video' controls src='https://m.youtube.com/fixture.mp4'></video></div><script>window.ytInitialPlayerResponse={videoDetails:{videoId:'"+id+"',title:'Fixture "+id+"',author:'Test'}};</script>";
+   if(id!=null)body+="<div id='player'><video id='video' controls loop preload='auto' src='https://m.youtube.com/fixture.mp4'></video></div><script>window.ytInitialPlayerResponse={videoDetails:{videoId:'"+id+"',title:'Fixture "+id+"',author:'Test'}};</script>";
    if(isPhone)return PhoneMediaPolicy.html(body);
    return new WebResourceResponse("text/html","UTF-8",new ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
   }

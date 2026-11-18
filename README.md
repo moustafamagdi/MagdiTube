@@ -57,3 +57,13 @@ Validation: the new JavaScript regression fails on the old fragment-based helper
 ## State-aware buttons (0.1.28)
 
 The phone disables/dims Play while the car is playing and disables/dims Pause while it is paused. Button state follows observed car playback, including changes made on the car; it does not assume a command succeeded. Existing readiness/disconnection guards remain in place. The native integration assertions cover both transitions, including paused state in native video fullscreen.
+
+## Controller hardening (0.1.29)
+
+Rejected observations now stop before reaching resume intent, the audio card or playback services. Current documents with an unready selection publish neutral loading state. Android document-start leases remain in place, with an additional document identity for commands executed by Chromium. Missing or rejected reports expire transport controls after 6.5 seconds (plus the phone's 500 ms repaint interval).
+
+Controls distinguish playing, paused, buffering, ended and media errors. Play/Pause are visibly dimmed when unavailable; replay, seeking and skipping require observed support. Commands and seek gestures bind to the displayed request and observed player. **Stop is connection-wide**, canceling the current selection and pending work even from an older selection display. It cannot cross a reconnection. Commands do not optimistically declare playback success.
+
+Late cover/resume callbacks cannot restore intent after Pause, Stop, replacement or disconnection. Repeated taps on an already-loading selection preserve its start; A/B/A still uses a fresh final request. No IPTV local-player allocation mechanism is used.
+
+Validation and limits: [0.1.29 verification](research/CONTROLLER_HARDENING_0.1.29.md).

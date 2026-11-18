@@ -36,6 +36,6 @@ public final class PlaybackService extends Service {
   Diagnostics.event("Background keep-alive active; audio focus remains with WebView");
   return START_NOT_STICKY;
  }
- private void stopPlayback(){for(TubeView view:new ArrayList<>(players.keySet()))if(view!=null)view.pauseMedia();CarPlaybackSession.stopDetached();stopSelf();}
+ private void stopPlayback(){CarController.stop(CarController.epoch());CarPlaybackSession.stopDetached();stopSelf();}
  public void onDestroy(){requested=false;Diagnostics.event("Background audio service stopped");super.onDestroy();}
 }

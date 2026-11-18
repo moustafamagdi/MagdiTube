@@ -38,8 +38,9 @@ public final class TubeView extends LinearLayout implements CarController.Player
   long now=android.os.SystemClock.uptimeMillis();if(now<pictureWindowEnd)return;pictureWindowEnd=now+1200;
   timer.post(refreshPicture);timer.postDelayed(refreshPicture,300);timer.postDelayed(refreshPicture,1100);
  }
- private final Runnable fullscreenReturn=()->{if(!closed&&active&&fullscreen!=null)tryResumePlayback();};
- private void scheduleFullscreenReturn(){if(closed||!active)return;schedulePictureRefresh();long now=android.os.SystemClock.uptimeMillis();if(now<fullscreenWindowEnd)return;fullscreenWindowEnd=now+1200;timer.postDelayed(fullscreenReturn,300);timer.postDelayed(fullscreenReturn,1100);}
+ private long fullscreenResumeGeneration,fullscreenOwner;
+ private final Runnable fullscreenReturn=()->{if(!closed&&active&&fullscreen!=null&&fullscreenResumeGeneration==resumeCommandGeneration&&fullscreenOwner==CarController.owner())tryResumePlayback();};
+ private void scheduleFullscreenReturn(){if(closed||!active)return;schedulePictureRefresh();long now=android.os.SystemClock.uptimeMillis();if(now<fullscreenWindowEnd)return;fullscreenWindowEnd=now+1200;fullscreenResumeGeneration=resumeCommandGeneration;fullscreenOwner=CarController.owner();timer.postDelayed(fullscreenReturn,300);timer.postDelayed(fullscreenReturn,1100);}
  private void cancelPictureRefresh(){timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);pictureWindowEnd=0;fullscreenWindowEnd=0;}
  private void invalidateSample(){sampleGeneration++;sampleInFlight=false;}
  private boolean acceptSample(long generation,long epoch,long request){
@@ -86,7 +87,11 @@ public final class TubeView extends LinearLayout implements CarController.Player
    web.evaluateJavascript("window.__magdiSample?window.__magdiSample("+detailed+","+MediaCardService.wantsArtwork(TubeView.this)+"):null",value->{
     if(!acceptSample(request,e,r))return;
     try{String json=new org.json.JSONArray("["+value+"]").getString(0);org.json.JSONObject state=new org.json.JSONObject(json);
-     org.json.JSONObject control=state.optJSONObject("controller");controllerObservation(control==null?"helper-unavailable":CarController.report(TubeView.this,e,r,control));state.remove("controller");
+     org.json.JSONObject control=state.optJSONObject("controller");String result=control==null?"helper-unavailable":CarController.report(TubeView.this,e,r,control);controllerObservation(result);
+     if(!result.equals("accepted")&&!result.equals("current-loading"))return;
+     timer.removeCallbacks(expireObservation);timer.postDelayed(expireObservation,CarController.FRESH_MS);
+     state.remove("controller");
+     if(result.equals("current-loading")||control.optBoolean("error")||!control.optBoolean("hasVideo")||control.optInt("ready")==0){clearPlaybackConsumers();return;}
      if(!state.optBoolean("resumeWanted"))pendingResume=false;
      MediaCardService.observe(TubeView.this,state.optBoolean("playing"),state.optBoolean("muted"),state.optInt("ready")>0,state.optLong("time")*1000,ThumbnailCache.Art.parse(state.optJSONObject("artwork")));
      state.remove("artwork"); // Never include thumbnail URLs or video IDs in diagnostics.
@@ -141,7 +146,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من MM Tube على الموبايل ثم اضغط تحديث":"Sign in using MM Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
  boolean block=!allowed(uri)&&!(phone&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));setContentVisibility(status,VISIBLE);CookiePersistence.request();}return block;
- } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();phoneSequence=0;accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);setContentVisibility(status,GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
+ } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();if(!phone){CarController.navigating(TubeView.this);clearPlaybackConsumers();}phoneSequence=0;accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);setContentVisibility(status,GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
  public void onPageFinished(WebView v,String u){
   if(closed)return;back.setEnabled(v.canGoBack()||fullscreen!=null);CookiePersistence.request();
   if(phone){web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);Diagnostics.event("Controller browsing loaded; car authentication not verified");return;}
@@ -204,16 +209,31 @@ public final class TubeView extends LinearLayout implements CarController.Player
  public boolean isCarView(){return !phone;}
  boolean carAvailable(){return !phone&&active&&!closed&&CarController.accepts(this,CarController.epoch(),CarController.request());}
  private void nativeMute(boolean muted){if(androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.MUTE_AUDIO))androidx.webkit.WebViewCompat.setAudioMuted(web,muted);}
- public void cancelController(){selectionToken="";selectedId="";CarDocumentLease.install(web,"");invalidateSample();pendingResume=false;resumeCommandGeneration++;nativeMute(true);web.stopLoading();pauseMedia();hideFullscreen();hideControllerFullscreen();web.loadUrl("about:blank");MediaCardService.forget(this);PlaybackService.release(this);}
+ public void cancelController(){selectionToken="";selectedId="";CarDocumentLease.install(web,"");invalidateSample();pendingResume=false;resumeCommandGeneration++;nativeMute(true);web.stopLoading();web.evaluateJavascript("window.__magdiCar?.cancel();window.__magdiPlayback?.stop();document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);clearPlaybackConsumers();hideFullscreen();hideControllerFullscreen();web.loadUrl("about:blank");MediaCardService.forget(this);PlaybackService.release(this);}
  public void selectController(VideoSelection video,long epoch,long request){
   cancelController();selectionEpoch=epoch;selectionRequest=request;selectedId=video.id;selectionToken=epoch+"_"+request;if(!CarDocumentLease.install(web,selectionToken)||!ControllerCookies.toCar()){CarController.failed(this,epoch,request);return;}CookiePersistence.request();
   timer.postDelayed(()->{if(!CarController.accepts(this,epoch,request)||closed||!active)return;CarController.loading(this,epoch,request);web.loadUrl(video.url);},150);
   timer.postDelayed(()->{if(!CarController.accepts(this,epoch,request))return;String phase=CarController.state().optString("phase");if(phase.equals("sending")||phase.equals("loading"))CarController.failed(this,epoch,request);},30000);
  }
- public void commandController(String action,double value,long epoch,long request){if(!carAvailable()||!CarController.accepts(this,epoch,request))return;if("fullscreen".equals(action)){toggleControllerFullscreen();return;}if("pause".equals(action))pendingResume=false;web.evaluateJavascript("window.__magdiCar&&window.__magdiCar.command("+org.json.JSONObject.quote(action)+","+value+","+org.json.JSONObject.quote(selectionToken)+")",null);}
+ public void commandController(String action,double value,long epoch,long request){
+  if(!carAvailable()||!CarController.accepts(this,epoch,request)||!CarController.can(action))return;
+  if("pause".equals(action)||"play".equals(action)||"next".equals(action)||"previous".equals(action)){resumeCommandGeneration++;pendingResume=false;}
+  if("fullscreen".equals(action)){toggleControllerFullscreen();return;}
+  ownedScript("return c.command("+org.json.JSONObject.quote(action)+","+value+",t,d,id,g);",null);
+ }
+ // The JS guard checks ownership when Chromium actually executes, not just when queued.
+ private void ownedScript(String body,ValueCallback<String> callback){
+  if(!carAvailable()||!CarController.fresh())return;
+  org.json.JSONObject p=CarController.state().optJSONObject("playback");
+  long e=CarController.epoch(),r=CarController.request(),o=CarController.owner(),g=resumeCommandGeneration;
+  String js="(()=>{const c=window.__magdiCar,t="+org.json.JSONObject.quote(p.optString("token"))+",d="+org.json.JSONObject.quote(p.optString("document"))+",id="+org.json.JSONObject.quote(p.optString("id"))+",g="+g+";if(!c||!c.guard(t,d,id,g))return false;"+body+"})()";
+  web.evaluateJavascript(js,callback==null?null:value->{if(!closed&&active&&CarController.accepts(this,e,r)&&CarController.owner()==o&&resumeCommandGeneration==g&&CarController.fresh())callback.onReceiveValue(value);});
+ }
+ private void clearPlaybackConsumers(){pendingResume=false;resumeCommandGeneration++;MediaCardService.forget(this);PlaybackService.release(this);PlaybackCoordinator.observe(this,false);}
+ private final Runnable expireObservation=()->{if(!closed&&!CarController.fresh())clearPlaybackConsumers();};
  private void toggleControllerFullscreen(){
   if(fullscreen!=null){hideFullscreen();return;}if(controllerFullscreen){hideControllerFullscreen();return;}controllerFullscreen=true;hideChildren();web.setVisibility(VISIBLE);
-  web.evaluateJavascript("(()=>{let s=document.createElement('style');s.id='magdi-car-fullscreen';s.textContent='html,body{overflow:hidden!important} #player-container-id,#player-container,#player,.html5-video-player{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483646!important} video{width:100%!important;height:100%!important;object-fit:contain!important}';document.head.appendChild(s);window.dispatchEvent(new Event('resize'));})()",null);
+  ownedScript("let s=document.createElement('style');s.id='magdi-car-fullscreen';s.textContent='html,body{overflow:hidden!important} #player-container-id,#player-container,#player,.html5-video-player{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483646!important} video{width:100%!important;height:100%!important;object-fit:contain!important}';document.head.appendChild(s);window.dispatchEvent(new Event('resize'));",null);
   Button exit=button(ar?"خروج":"Exit","Exit car fullscreen");exit.setTag("controller-fullscreen-exit");content.addView(exit,new FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP|Gravity.LEFT));exit.setOnClickListener(v->hideControllerFullscreen());
  }
  private void hideControllerFullscreen(){if(!controllerFullscreen)return;controllerFullscreen=false;View exit=content.findViewWithTag("controller-fullscreen-exit");if(exit!=null)content.removeView(exit);web.evaluateJavascript("document.getElementById('magdi-car-fullscreen')?.remove();window.dispatchEvent(new Event('resize'))",null);restoreChildren();}
@@ -223,34 +243,23 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }
  private void releasePhoneSuppression(){if(!phoneSuppressed)return;phoneSuppressed=false;pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.suppress(false)",null);Diagnostics.event("Phone playback available again; automatic resume disabled; instance="+instance);}
 
- void pauseMedia(){resumeCommandGeneration++;PlaybackCoordinator.observe(this,false);pendingResume=false;web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.stop()",null);web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",null);MediaCardService.paused(this);PlaybackService.release(this);}
+ void pauseMedia(){if(!carAvailable())return;commandController("pause",0,CarController.epoch(),CarController.request());}
  void playFromMediaCard(){
-  if(phone||!carAvailable()||closed||accountPage)return;
+  if(!carAvailable())return;
   android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
-  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL){Diagnostics.event("Media card play deferred: audio mode interruption");return;}
-  if(!active&&!background){Diagnostics.event("Media card play ignored: background audio disabled");return;}
-  releasePhoneSuppression();web.onResume();timer.removeCallbacks(sample);sampleDue=0;timer.post(sample);if(background)PlaybackService.keep(this);
-  web.evaluateJavascript("(function(){var v=document.querySelector('video');if(!v)return 'no-video';v.muted=false;v.play().catch(()=>{});return 'play-requested';})()",value->{if(!closed)Diagnostics.event("Media card play request dispatched; playback result follows in observed state");});
+  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL)return;
+  commandController("play",0,CarController.epoch(),CarController.request());
  }
-
- void skipFromMediaCard(String id,boolean next){
-  if(phone||!carAvailable()||closed||accountPage||phoneSuppressed||(!active&&!background)||!id.matches("[A-Za-z0-9_-]{11}"))return;
-  android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
-  if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL){Diagnostics.event("Media card skip deferred: audio mode interruption");return;}
-  web.evaluateJavascript("window.__magdiTransport?window.__magdiTransport.skip('"+id+"',"+next+"):'unavailable'",value->{if(!closed)Diagnostics.event("Media card "+(next?"NEXT":"PREVIOUS")+" "+("\"requested\"".equals(value)?"request dispatched; playback result follows":"unavailable"));});
- }
-
  private void coverPlayback(){
-  if(phone||!active||web==null||closed||accountPage||!background||phoneSuppressed)return;
-  pendingResume=true;final long command=resumeCommandGeneration;
-  web.evaluateJavascript("window.__magdiPlayback?window.__magdiPlayback.cover():false",value->{if(!closed&&!phoneSuppressed&&command==resumeCommandGeneration){pendingResume="true".equals(value);Diagnostics.event("Playback cover; resume intent="+pendingResume);}});
+  if(phone||!active||web==null||closed||accountPage||!background||phoneSuppressed||!CarController.fresh())return;
+  ownedScript("return window.__magdiPlayback?window.__magdiPlayback.cover():false;",value->{pendingResume="true".equals(value);Diagnostics.event("Playback cover; resume intent="+pendingResume);});
  }
  private void tryResumePlayback(){
-  if(phone||!carAvailable()||closed||accountPage||!background||phoneSuppressed||!pendingResume)return;
+  if(phone||!carAvailable()||closed||accountPage||!background||phoneSuppressed||!pendingResume||!CarController.fresh())return;
   android.media.AudioManager audio=(android.media.AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
   if(audio.getMode()!=android.media.AudioManager.MODE_NORMAL||audio.isMusicActive()){Diagnostics.event("Resume deferred; audio is occupied");return;}
   pendingResume=false;
-  web.evaluateJavascript("window.__magdiPlayback?window.__magdiPlayback.resume():'not-ready'",value->Diagnostics.event("Resume after interruption: "+value));
+  ownedScript("return window.__magdiPlayback?window.__magdiPlayback.resume():'not-ready';",value->Diagnostics.event("Resume request evaluated; playback result follows in observed state"));
  }
  void prepareDetach(){pause();hideFullscreen();hideSearch();}
  boolean handleBack(){if(controllerFullscreen){hideControllerFullscreen();return true;}if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
@@ -297,5 +306,5 @@ public final class TubeView extends LinearLayout implements CarController.Player
   content.addView(panel,new FrameLayout.LayoutParams(-1,-1));input.requestFocus();
   if(phone)input.postDelayed(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT),150);
  }
- void close(){if(!phone)CarController.detach(this);timer.removeCallbacks(controllerPoll);closed=true;active=false;PlaybackCoordinator.forget(this);invalidateSample();timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);MediaCardService.forget(this);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);CarDocumentLease.release(web);content.removeView(web);web.destroy();}
+ void close(){if(!phone)CarController.detach(this);timer.removeCallbacks(controllerPoll);closed=true;active=false;timer.removeCallbacks(expireObservation);PlaybackCoordinator.forget(this);invalidateSample();timer.removeCallbacks(sample);timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);MediaCardService.forget(this);PlaybackService.release(this);hideFullscreen();hideSearch();Diagnostics.event("View destroyed");AdAssist.release(web);CarDocumentLease.release(web);content.removeView(web);web.destroy();}
 }

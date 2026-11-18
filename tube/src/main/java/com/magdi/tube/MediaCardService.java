@@ -29,6 +29,8 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  private WeakReference<TubeView> lastStateTarget=new WeakReference<>(null);
  static final class State {
   final boolean playing,muted,ready;final long position;
+  final long epoch=CarController.epoch(),request=CarController.request(),owner=CarController.owner();
+  boolean valid(TubeView view){return CarController.accepts(view,epoch,request)&&CarController.owner()==owner&&CarController.fresh();}
   final ThumbnailCache.Art art;
   State(boolean playing,boolean muted,boolean ready,long position,ThumbnailCache.Art art){this.playing=playing;this.muted=muted;this.ready=ready;this.position=position;this.art=art;}
  }
@@ -36,14 +38,14 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   observe(view,playing,muted,ready,position,null);
  }
  static void observe(TubeView view,boolean playing,boolean muted,boolean ready,long position,ThumbnailCache.Art art){
-  if(!view.isCarView())return;
+  if(!view.carAvailable()||!CarController.fresh())return;
   State old=observations.put(view,new State(playing,muted,ready,position,art));TubeView current=selected.get();
   // Muted feed previews must not take the car video's controls. Keep a paused target.
   if(ready&&!muted&&(current==null||(!current.isCarView()&&view.isCarView()))){selected=new WeakReference<>(view);Diagnostics.event("Media card target selected: "+(view.isCarView()?"car":"phone"));}
   if(selected.get()==view&&running.get()!=null&&(old==null||old.playing!=playing||old.ready!=ready))Diagnostics.event("Media card state reported: playing="+playing+"; ready="+ready+"; muted="+muted);
   if(selected.get()==view)refresh();
  }
- static void paused(TubeView view){State s=observations.get(view);if(s!=null)observe(view,false,s.muted,s.ready,s.position,s.art);}
+ static void paused(TubeView view){/* Commands do not constitute observed playback state. */}
  static void clearArtwork(TubeView view){State s=observations.get(view);if(s!=null)observe(view,s.playing,s.muted,s.ready,s.position,null);}
  static TubeView target(){return selected.get();}
  static boolean wantsArtwork(TubeView view){return running.get()!=null&&(selected.get()==null||selected.get()==view||view.isCarView());}
@@ -57,7 +59,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   session.setCallback(new MediaSessionCompat.Callback(){
    public void onPlay(){command(true);}
    public void onPause(){command(false);}
-   public void onStop(){CarController.command("stop",0,CarController.epoch());}
+   public void onStop(){CarController.stop(CarController.epoch());}
    public void onSkipToNext(){skip(true);}
    public void onSkipToPrevious(){skip(false);}
    public void onPlayFromMediaId(String id,Bundle extras){if(CURRENT.equals(id))command(true);}
@@ -77,16 +79,16 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   result.sendResult(Collections.singletonList(new MediaBrowserCompat.MediaItem(description,available?MediaBrowserCompat.MediaItem.FLAG_PLAYABLE:0)));
  }
  private void publish(){
-  if(session==null)return;State state=observations.get(selected.get());boolean now=state!=null&&state.ready;
+  if(session==null)return;State state=observations.get(selected.get());boolean now=state!=null&&state.valid(selected.get())&&state.ready;
   updateArtwork(now?state.art:null);
   ThumbnailCache.Art details=now?state.art:null;
   String title=details!=null&&!details.title.isEmpty()?details.title:(ar()?"صوت الفيديو الحالي":"Current video audio");
   String author=details!=null&&!details.author.isEmpty()?details.author:now?"MM Tube":(ar()?"اختر فيديو في MM Tube أولًا":"Choose a video in MM Tube first");
   String icon=artworkUri().toString();boolean changed=!metadataPublished||now!=available||!icon.equals(publishedArtwork)||!title.equals(publishedTitle)||!author.equals(publishedAuthor);
   if(changed){metadataPublished=true;publishedArtwork=icon;publishedTitle=title;publishedAuthor=author;session.setMetadata(new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,CURRENT).putString(MediaMetadataCompat.METADATA_KEY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE,title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE,author).putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ART_URI,icon).putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,icon).build());}
-  long actions=now?PlaybackStateCompat.ACTION_PLAY|PlaybackStateCompat.ACTION_PAUSE|PlaybackStateCompat.ACTION_PLAY_PAUSE|PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID:0;
-  if(details!=null){if(details.next)actions|=PlaybackStateCompat.ACTION_SKIP_TO_NEXT;if(details.previous)actions|=PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;}
-  long elapsed=android.os.SystemClock.elapsedRealtime();int playback=!now?PlaybackStateCompat.STATE_NONE:state.playing?PlaybackStateCompat.STATE_PLAYING:PlaybackStateCompat.STATE_PAUSED;
+  long actions=0;if(now){if(CarController.can("play"))actions|=PlaybackStateCompat.ACTION_PLAY|PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID;if(CarController.can("pause"))actions|=PlaybackStateCompat.ACTION_PAUSE;if(actions!=0)actions|=PlaybackStateCompat.ACTION_PLAY_PAUSE;actions|=PlaybackStateCompat.ACTION_STOP;}
+  if(details!=null){if(details.next&&CarController.can("next"))actions|=PlaybackStateCompat.ACTION_SKIP_TO_NEXT;if(details.previous&&CarController.can("previous"))actions|=PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;}
+  long elapsed=android.os.SystemClock.elapsedRealtime();String phase=CarController.state().optString("phase");int playback=!now?PlaybackStateCompat.STATE_NONE:"buffering".equals(phase)?PlaybackStateCompat.STATE_BUFFERING:"ended".equals(phase)?PlaybackStateCompat.STATE_STOPPED:state.playing?PlaybackStateCompat.STATE_PLAYING:PlaybackStateCompat.STATE_PAUSED;
   long position=now?state.position:0,expected=lastPosition+(lastPlaybackState==PlaybackStateCompat.STATE_PLAYING?elapsed-statePublishedAt:0);
   // Android extrapolates progress between updates. Publish transitions/seeks immediately.
   if(actions!=lastActions||playback!=lastPlaybackState||lastStateTarget.get()!=selected.get()||Math.abs(position-expected)>2500||elapsed-statePublishedAt>=10000){
@@ -109,14 +111,16 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  }
  void command(boolean play){
   TubeView view=selected.get();State state=observations.get(view);
-  if(view==null||state==null||!state.ready){Diagnostics.event("Media card command ignored: no current video");publish();return;}
+  if(view==null||state==null||!state.valid(view)||!state.ready){Diagnostics.event("Media card command ignored: no current video");publish();return;}
   Diagnostics.event("Media card command: "+(play?"PLAY":"PAUSE")+" target="+(view.isCarView()?"car":"phone"));
-  if(play)view.playFromMediaCard();else view.pauseMedia();
+  if(play&&getSystemService(android.media.AudioManager.class).getMode()!=android.media.AudioManager.MODE_NORMAL)return;
+  CarController.command(play?"play":"pause",0,state.epoch,state.request,state.owner);
  }
  void skip(boolean next){
   TubeView view=selected.get();State state=observations.get(view);ThumbnailCache.Art details=state==null?null:state.art;
-  if(view==null||state==null||!state.ready||details==null||!(next?details.next:details.previous)){Diagnostics.event("Media card skip unavailable");return;}
-  view.skipFromMediaCard(details.id,next);
+  if(view==null||state==null||!state.valid(view)||!state.ready||details==null||!(next?details.next:details.previous)){Diagnostics.event("Media card skip unavailable");return;}
+  if(getSystemService(android.media.AudioManager.class).getMode()!=android.media.AudioManager.MODE_NORMAL)return;
+  CarController.command(next?"next":"previous",0,state.epoch,state.request,state.owner);
  }
  @Override public void onDestroy(){if(running.get()==this)running=new WeakReference<>(null);artworkGeneration++;if(thumbnails!=null)thumbnails.close();if(session!=null){session.setActive(false);session.release();session=null;}Diagnostics.event("Media card service disconnected");super.onDestroy();}
 }
