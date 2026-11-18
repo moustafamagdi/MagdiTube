@@ -37,8 +37,10 @@ jobs:
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --output release.apk
           actual=$(sha256sum release.apk | cut -d ' ' -f 1)
           [[ "$digest" == "sha256:$actual" ]]
-          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
-          "$build_tools/apksigner" verify --print-certs release.apk > signature.txt
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$build_tools/apksigner" verify --print-certs release.apk | tee signature.txt
           grep -Fx 'Signer #1 certificate SHA-256 digest: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a5ab65' signature.txt
           "$build_tools/aapt" dump badging release.apk > badging.txt
           grep -q "^package: name='com.magdi.tube' " badging.txt
