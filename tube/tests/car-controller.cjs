@@ -37,3 +37,7 @@ p.video.error=null;p.video.ended=true;p.video.paused=true;assert.equal(p.window.
 p.video.seekable.start=()=>10;assert.equal(p.window.__magdiCar.state().replay,false);assert.equal(p.window.__magdiCar.command('play',0,'7_12','doc-1','AAAAAAAAAAA',4),false);
 p.window.__magdiCar.revoke();assert.equal(p.window.__magdiCar.guard('7_12','doc-1','AAAAAAAAAAA',5),false);
 console.log('PASS: execution ownership, empty-token rejection, intent invalidation, buffering, media error and bounded replay support');
+
+assert.equal(stale.window.__magdiCar.fullscreen(true,'7_12','doc-1','AAAAAAAAAAA',1),false);
+assert.equal(p.window.__magdiCar.fullscreen(true,'7_12','doc-1','AAAAAAAAAAA',6),false);
+console.log('PASS: remote fullscreen rejects obsolete and revoked document ownership before touching layout');

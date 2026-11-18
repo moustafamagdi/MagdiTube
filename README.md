@@ -10,6 +10,8 @@ From **0.1.25**, the phone is a controller only: browse, search and sign in ther
 
 Open MM Tube on Android Auto before selecting a video. From **0.1.31**, temporarily covering/leaving the car view retains its playback session while the car service remains bound (with Background audio enabled). Returning restores the same document and fullscreen state. Service unbind/disconnection still stops playback and cancels pending requests; reconnecting never autoplays. Closing the phone interface leaves an available car player running.
 
+From **0.1.32**, the phone's **Car fullscreen** action expands only the active video and its ancestor path, without moving or reloading the media element. It validates the visible layout before hiding the car toolbar; exit restores the page layout. This avoids unrelated YouTube player containers covering the picture.
+
 The phone uses a separate WebView profile, native renderer mute, native media-request rejection and Android-injected HTML response CSP (including data/blob media). Service-worker network access is blocked in that profile. Unsupported WebView features disable phone browsing and request a WebView update. The car remains the only playback and audio-service target.
 
 Existing YouTube cookies migrate into the phone profile once; selections synchronize YouTube cookies and deletions back to the car via native APIs, preserving cookie attributes. Google login cookies remain in the phone profile. Cookie synchronization is **not** a claim that car authentication or playback succeeded: status comes from the actual car player. Google may reject embedded sign-in. No passwords, cookie values or session tokens are logged.

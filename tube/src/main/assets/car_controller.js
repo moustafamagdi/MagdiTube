@@ -7,11 +7,39 @@
  const identity=()=>{try{return window.__magdiArtwork?.()||null;}catch(_){return null;}};
  function video(){const v=document.querySelector('video');if(v&&v!==tracked){tracked=v;waiting=false;for(const name of ['waiting','stalled','playing','canplay','pause','ended','emptied'])v.addEventListener(name,()=>{if(tracked===v)waiting=name==='waiting'||name==='stalled';});}return v;}
  const matches=(t,d,id)=>!revoked&&t===documentToken&&d===documentId&&!!d&&id===(identity()?.id||'');
+ // Promote only the selected video, never every YouTube player container. Keep
+ // the media element in place: reparenting it can detach Chromium's video surface.
+ let fullscreenVideo=null,fullscreenStyle=null,fullscreenMarks=[];
+ function exitFullscreen(){
+  if(!fullscreenStyle&&!fullscreenMarks.length)return true;
+  fullscreenStyle?.remove();fullscreenStyle=null;fullscreenVideo=null;
+  for(const [el,old] of fullscreenMarks){if(old===null)el.removeAttribute('data-mm-fullscreen');else el.setAttribute('data-mm-fullscreen',old);}
+  fullscreenMarks=[];window.dispatchEvent(new Event('resize'));return true;
+ }
+ function enterFullscreen(){
+  const v=video();if(!v||!v.isConnected||v.error||!v.readyState||document.fullscreenElement)return false;
+  exitFullscreen();fullscreenVideo=v;
+  for(let el=v;el;el=el.parentElement){fullscreenMarks.push([el,el.getAttribute('data-mm-fullscreen')]);el.setAttribute('data-mm-fullscreen',el===v?'video':'path');}
+  fullscreenStyle=document.createElement('style');fullscreenStyle.id='magdi-car-fullscreen';
+  fullscreenStyle.textContent=`
+   html,body{overflow:hidden!important;background:#000!important}
+   body *:not([data-mm-fullscreen]){visibility:hidden!important}
+   [data-mm-fullscreen]{visibility:visible!important;opacity:1!important;transform:none!important;translate:none!important;rotate:none!important;scale:none!important;filter:none!important;backdrop-filter:none!important;perspective:none!important;contain:none!important;content-visibility:visible!important;clip:auto!important;clip-path:none!important;mask:none!important;overflow:visible!important;isolation:auto!important;will-change:auto!important}
+   [data-mm-fullscreen="path"]{display:block!important;position:static!important;z-index:auto!important;width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important}
+   [data-mm-fullscreen="video"]{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important;object-fit:contain!important;z-index:2147483647!important;background:#000!important}
+  `;
+  document.head.appendChild(fullscreenStyle);window.dispatchEvent(new Event('resize'));
+  const r=v.getBoundingClientRect();
+  if(r.width<innerWidth-2||r.height<innerHeight-2||document.elementFromPoint(innerWidth/2,innerHeight/2)!==v){exitFullscreen();return false;}
+  return true;
+ }
  window.__magdiCar={
   matches,
+  fullscreen(enabled,t,d,id,g){if(!this.guard(t,d,id,g))return false;return enabled?enterFullscreen():exitFullscreen();},
+  exitFullscreen,
   guard(t,d,id,g){if(!matches(t,d,id)||g<revision)return false;revision=g;return true;},
   start(id,t){if(!revoked&&!started&&t===documentToken){started=true;wanted={id,token:t};attempt=0;}},
-  revoke(){revoked=true;wanted=null;window.__magdiPlayback?.stop();},
+  revoke(){exitFullscreen();revoked=true;wanted=null;window.__magdiPlayback?.stop();},
   cancel(){this.revoke();document.querySelectorAll('video,audio').forEach(v=>{v.pause();v.removeAttribute('src');v.load();});},
   command(action,value,t,d,id,g){
    if(!this.guard(t,d,id,g))return false;

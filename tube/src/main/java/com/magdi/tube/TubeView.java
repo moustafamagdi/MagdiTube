@@ -10,7 +10,8 @@ import android.widget.*;
 public final class TubeView extends LinearLayout implements CarController.Player {
  private final WebView web;
  private PhoneController controller;
- private boolean phoneSafe,documentReady,controllerFullscreen;
+ private boolean phoneSafe,documentReady,controllerFullscreen,controllerFullscreenRequested;
+ private long controllerFullscreenGeneration;
  private long selectionEpoch,selectionRequest,phoneSequence;
  private String selectedId="",selectionToken="",controllerObservation="";
  private final Runnable controllerPoll=new Runnable(){public void run(){if(closed||!active||!phone)return;controller.update();web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);timer.postDelayed(this,500);}};
@@ -99,7 +100,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
      PlaybackCoordinator.observe(TubeView.this,state.optBoolean("playing")&&!state.optBoolean("muted")&&state.optInt("ready")>0);
      if(phoneSuppressed)return;
      if((covered||!active)&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
-     if(detailed){state.put("sampleDelayMs",late);state.put("callbackMs",android.os.SystemClock.uptimeMillis()-started);state.put("fullscreen",fullscreen!=null);state.put("webWidth",web.getWidth());state.put("webHeight",web.getHeight());state.put("viewWidth",getWidth());state.put("viewHeight",getHeight());state.put("pictureRefreshes",pictureRefreshCount);pictureRefreshCount=0;
+     if(detailed){state.put("sampleDelayMs",late);state.put("callbackMs",android.os.SystemClock.uptimeMillis()-started);state.put("fullscreen",fullscreen!=null||controllerFullscreen);state.put("webWidth",web.getWidth());state.put("webHeight",web.getHeight());state.put("viewWidth",getWidth());state.put("viewHeight",getHeight());state.put("pictureRefreshes",pictureRefreshCount);pictureRefreshCount=0;
       Runtime runtime=Runtime.getRuntime();state.put("appJavaHeapMiB",(runtime.totalMemory()-runtime.freeMemory())/1048576);
       Diagnostics.event("Playback source="+(phone?"phone":"car")+" instance="+instance+" visible="+(active&&!covered)+" "+state);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
     }catch(org.json.JSONException ignored){controllerObservation("sample-unavailable");}
@@ -146,7 +147,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  if(auth&&!phone){Toast.makeText(c,ar?"سجّل الدخول من MM Tube على الموبايل ثم اضغط تحديث":"Sign in using MM Tube on your phone, then Reload",Toast.LENGTH_LONG).show();Diagnostics.event("Phone sign-in required");return true;}
  boolean block=!allowed(uri)&&!(phone&&auth);
  if(block&&r.isForMainFrame()){String scheme=uri.getScheme();String target=(scheme==null?"none":scheme)+"://"+(host==null?"none":host);target=target.replaceAll("[^a-zA-Z0-9.:/_-]","?");if(target.length()>160)target=target.substring(0,160);Diagnostics.event("Blocked navigation target="+target);status.setText((ar?"رابط غير مدعوم: ":"Unsupported link: ")+target+(ar?" — جرّب اشتراكاتي أو صدّر اللوج":" — try Subscriptions or export log"));setContentVisibility(status,VISIBLE);CookiePersistence.request();}return block;
- } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();if(!phone){CarController.navigating(TubeView.this);clearPlaybackConsumers();}phoneSequence=0;accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);setContentVisibility(status,GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
+ } public void onPageStarted(WebView v,String u,android.graphics.Bitmap icon){invalidateSample();if(!phone){hideControllerFullscreen();CarController.navigating(TubeView.this);clearPlaybackConsumers();}phoneSequence=0;accountPage=!allowed(Uri.parse(u));MediaCardService.clearArtwork(TubeView.this);if(accountPage)PlaybackService.release(TubeView.this);setContentVisibility(status,GONE);Diagnostics.event(accountPage?"Account page started":"Page load started");}
  public void onPageFinished(WebView v,String u){
   if(closed)return;back.setEnabled(v.canGoBack()||fullscreen!=null);CookiePersistence.request();
   if(phone){web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);Diagnostics.event("Controller browsing loaded; car authentication not verified");return;}
@@ -235,11 +236,26 @@ public final class TubeView extends LinearLayout implements CarController.Player
  private void clearPlaybackConsumers(){pendingResume=false;resumeCommandGeneration++;MediaCardService.forget(this);PlaybackService.release(this);PlaybackCoordinator.observe(this,false);}
  private final Runnable expireObservation=()->{if(!closed&&!CarController.fresh())clearPlaybackConsumers();};
  private void toggleControllerFullscreen(){
-  if(fullscreen!=null){hideFullscreen();return;}if(controllerFullscreen){hideControllerFullscreen();return;}controllerFullscreen=true;hideChildren();web.setVisibility(VISIBLE);
-  ownedScript("let s=document.createElement('style');s.id='magdi-car-fullscreen';s.textContent='html,body{overflow:hidden!important} #player-container-id,#player-container,#player,.html5-video-player{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483646!important} video{width:100%!important;height:100%!important;object-fit:contain!important}';document.head.appendChild(s);window.dispatchEvent(new Event('resize'));",null);
-  Button exit=button(ar?"خروج":"Exit","Exit car fullscreen");exit.setTag("controller-fullscreen-exit");content.addView(exit,new FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP|Gravity.LEFT));exit.setOnClickListener(v->hideControllerFullscreen());
+  if(fullscreen!=null){hideFullscreen();return;}
+  if(controllerFullscreenRequested){hideControllerFullscreen();return;}
+  controllerFullscreenRequested=true;long generation=++controllerFullscreenGeneration;
+  timer.postDelayed(()->{if(generation==controllerFullscreenGeneration&&controllerFullscreenRequested&&!controllerFullscreen){hideControllerFullscreen();Diagnostics.event("Car fullscreen acknowledgement expired");}},1500);
+  ownedScript("return c.fullscreen(true,t,d,id,g);",value->{
+   if(generation!=controllerFullscreenGeneration||!controllerFullscreenRequested)return;
+   if(!"true".equals(value)){controllerFullscreenRequested=false;Diagnostics.event("Car fullscreen unavailable; original layout retained");return;}
+   controllerFullscreen=true;hideChrome();
+   Button exit=button(ar?"خروج":"Exit","Exit car fullscreen");exit.setTag("controller-fullscreen-exit");content.addView(exit,new FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP|Gravity.LEFT));exit.setOnClickListener(v->hideControllerFullscreen());
+   content.requestLayout();schedulePictureRefresh();Diagnostics.event("Controller fullscreen entered");
+  });
  }
- private void hideControllerFullscreen(){if(!controllerFullscreen)return;controllerFullscreen=false;View exit=content.findViewWithTag("controller-fullscreen-exit");if(exit!=null)content.removeView(exit);web.evaluateJavascript("document.getElementById('magdi-car-fullscreen')?.remove();window.dispatchEvent(new Event('resize'))",null);restoreChildren();}
+ private void hideControllerFullscreen(){
+  ++controllerFullscreenGeneration;
+  if(!controllerFullscreenRequested&&!controllerFullscreen)return;
+  controllerFullscreenRequested=false;boolean restore=controllerFullscreen;controllerFullscreen=false;
+  View exit=content.findViewWithTag("controller-fullscreen-exit");if(exit!=null)content.removeView(exit);
+  web.evaluateJavascript("window.__magdiCar?.exitFullscreen()",null);
+  if(restore)restoreChildren();Diagnostics.event("Controller fullscreen exited");
+ }
  void suppressHiddenPhone(){
   if(!phone||active||closed||phoneSuppressed||accountPage)return;phoneSuppressed=true;cancelPictureRefresh();invalidateSample();timer.removeCallbacks(sample);pauseMedia();
   web.evaluateJavascript("if(window.__magdiPlayback)window.__magdiPlayback.suppress(true)",null);web.onPause();Diagnostics.event("Hidden phone playback suspended while car audio plays; instance="+instance);
@@ -266,16 +282,17 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }
  void prepareDetach(){pause();hideFullscreen();hideSearch();}
  void retainCoveredHost(){cover();hideSearch();}
- boolean handleBack(){if(controllerFullscreen){hideControllerFullscreen();return true;}if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
+ boolean handleBack(){if(controllerFullscreenRequested){hideControllerFullscreen();return true;}if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
  private void setContentVisibility(View view,int visibility){if(hiddenViews.containsKey(view))hiddenViews.put(view,visibility);else view.setVisibility(visibility);}
- private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);if(child==content)continue;hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}
+ private void hideChrome(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);if(child==content)continue;hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}}
+ private void hideChildren(){hideChrome();
   // Keep the WebView measured at the full content size while an overlay owns input.
   // GONE formerly removed it from layout, leaving a retained document with a stale viewport.
   web.setVisibility(INVISIBLE);
  }
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();web.setVisibility(VISIBLE);content.requestLayout();schedulePictureRefresh();}
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
-  if(fullscreen!=null){callback.onCustomViewHidden();return;}hideSearch();hideChildren();fullscreenCallback=callback;
+  if(fullscreen!=null){callback.onCustomViewHidden();return;}hideControllerFullscreen();hideSearch();hideChildren();fullscreenCallback=callback;
   fullscreen=new FrameLayout(getContext()){
    @Override public void dispatchWindowVisibilityChanged(int visibility){
     if(visibility!=VISIBLE&&background&&!closed){coverPlayback();Diagnostics.event("Fullscreen temporarily covered");}
