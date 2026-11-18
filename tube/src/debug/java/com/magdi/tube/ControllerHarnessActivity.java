@@ -30,6 +30,7 @@ public final class ControllerHarnessActivity extends Activity {
   @JavascriptInterface public String state(){return ui(()->CarController.state().toString());}
   @JavascriptInterface public String controls(){return ui(()->{org.json.JSONObject out=new org.json.JSONObject();for(String label:new String[]{"Play","Pause","Stop","Previous","Next","Car fullscreen"}){Button button=findButton(phone,label);out.put(label,button!=null&&button.isEnabled());}return out.toString();});}
   @JavascriptInterface public String command(String action,double value){return ui(()->String.valueOf(CarController.command(action,value,CarController.epoch(),CarController.request(),CarController.owner())));}
+  @JavascriptInterface public String coverCar(boolean covered){return ui(()->{if(covered){car.cover();car.dispatchWindowVisibilityChanged(android.view.View.GONE);}else{car.dispatchWindowVisibilityChanged(android.view.View.VISIBLE);car.resume();}return "ok";});}
   @JavascriptInterface public String toggleCar(){return ui(()->{toggle();return "ok";});}
   @JavascriptInterface public String closePhone(){return ui(()->{phoneOpen=false;phone.pause();phone.setVisibility(android.view.View.GONE);return "ok";});}
   @JavascriptInterface public String muted(){return ui(()->String.valueOf(androidx.webkit.WebViewCompat.isAudioMuted(phoneWeb)));}

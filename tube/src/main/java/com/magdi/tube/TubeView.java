@@ -20,7 +20,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  private final ProgressBar progress;
  private final Button back;
  private final android.os.Handler timer=new android.os.Handler(android.os.Looper.getMainLooper());
- private boolean active, closed, background, phoneSuppressed, sampleInFlight, visualStatePending;
+ private boolean active, covered, closed, background, phoneSuppressed, sampleInFlight, visualStatePending;
  private static int nextInstance;
  private final int instance=++nextInstance;
  private long sampleStarted,sampleGeneration,sampleDue,pictureWindowEnd,fullscreenWindowEnd,resumeCommandGeneration;
@@ -34,13 +34,13 @@ public final class TubeView extends LinearLayout implements CarController.Player
  private long lastVideoLog;
  private final Runnable refreshPicture=()->refreshVideoSurface();
  private void schedulePictureRefresh(){
-  if(closed||!active)return;
+  if(closed||!active||covered)return;
   long now=android.os.SystemClock.uptimeMillis();if(now<pictureWindowEnd)return;pictureWindowEnd=now+1200;
   timer.post(refreshPicture);timer.postDelayed(refreshPicture,300);timer.postDelayed(refreshPicture,1100);
  }
  private long fullscreenResumeGeneration,fullscreenOwner;
- private final Runnable fullscreenReturn=()->{if(!closed&&active&&fullscreen!=null&&fullscreenResumeGeneration==resumeCommandGeneration&&fullscreenOwner==CarController.owner())tryResumePlayback();};
- private void scheduleFullscreenReturn(){if(closed||!active)return;schedulePictureRefresh();long now=android.os.SystemClock.uptimeMillis();if(now<fullscreenWindowEnd)return;fullscreenWindowEnd=now+1200;fullscreenResumeGeneration=resumeCommandGeneration;fullscreenOwner=CarController.owner();timer.postDelayed(fullscreenReturn,300);timer.postDelayed(fullscreenReturn,1100);}
+ private final Runnable fullscreenReturn=()->{if(!closed&&active&&!covered&&fullscreenResumeGeneration==resumeCommandGeneration&&fullscreenOwner==CarController.owner())tryResumePlayback();};
+ private void scheduleFullscreenReturn(){if(closed||!active||covered)return;schedulePictureRefresh();long now=android.os.SystemClock.uptimeMillis();if(now<fullscreenWindowEnd)return;fullscreenWindowEnd=now+1200;fullscreenResumeGeneration=resumeCommandGeneration;fullscreenOwner=CarController.owner();timer.postDelayed(fullscreenReturn,300);timer.postDelayed(fullscreenReturn,1100);}
  private void cancelPictureRefresh(){timer.removeCallbacks(refreshPicture);timer.removeCallbacks(fullscreenReturn);pictureWindowEnd=0;fullscreenWindowEnd=0;}
  private void invalidateSample(){sampleGeneration++;sampleInFlight=false;}
  private boolean acceptSample(long generation,long epoch,long request){
@@ -64,7 +64,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }
  @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(web!=null)schedulePictureRefresh();}
  private void refreshVideoSurface(){
-  if(closed||!active||accountPage||searchPanel!=null||!isAttachedToWindow()||!isShown())return;
+  if(closed||!active||covered||accountPage||searchPanel!=null||!isAttachedToWindow()||!isShown())return;
   pictureRefreshCount++;web.onResume();
   View target=fullscreen!=null?fullscreen:web;
   target.requestFocus();target.requestLayout();target.postInvalidateOnAnimation();
@@ -98,10 +98,10 @@ public final class TubeView extends LinearLayout implements CarController.Player
      if(state.optBoolean("playing")&&background)PlaybackService.keep(TubeView.this);else if(!pendingResume&&!interruption)PlaybackService.idle(TubeView.this);
      PlaybackCoordinator.observe(TubeView.this,state.optBoolean("playing")&&!state.optBoolean("muted")&&state.optInt("ready")>0);
      if(phoneSuppressed)return;
-     if(!active&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
+     if((covered||!active)&&getParent()==null&&!state.optBoolean("playing")&&!MediaCardService.retains(TubeView.this)){if(detachedIdleSince==0)detachedIdleSince=android.os.SystemClock.elapsedRealtime();if(android.os.SystemClock.elapsedRealtime()-detachedIdleSince>300000)CarPlaybackSession.stopDetached();}else detachedIdleSince=0;
      if(detailed){state.put("sampleDelayMs",late);state.put("callbackMs",android.os.SystemClock.uptimeMillis()-started);state.put("fullscreen",fullscreen!=null);state.put("webWidth",web.getWidth());state.put("webHeight",web.getHeight());state.put("viewWidth",getWidth());state.put("viewHeight",getHeight());state.put("pictureRefreshes",pictureRefreshCount);pictureRefreshCount=0;
       Runtime runtime=Runtime.getRuntime();state.put("appJavaHeapMiB",(runtime.totalMemory()-runtime.freeMemory())/1048576);
-      Diagnostics.event("Playback source="+(phone?"phone":"car")+" instance="+instance+" visible="+active+" "+state);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
+      Diagnostics.event("Playback source="+(phone?"phone":"car")+" instance="+instance+" visible="+(active&&!covered)+" "+state);lastVideoLog=android.os.SystemClock.elapsedRealtime();}
     }catch(org.json.JSONException ignored){controllerObservation("sample-unavailable");}
    });
   }
@@ -201,10 +201,12 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }
  static boolean allowed(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&u.getUserInfo()==null&&(u.getPort()==-1||u.getPort()==443)&&h!=null&&(h.equals("youtube.com")||h.endsWith(".youtube.com")||h.equals("youtu.be"));}
 
- void pause(){cancelPictureRefresh();active=false;timer.removeCallbacks(controllerPoll);timer.removeCallbacks(sample);invalidateSample();CookiePersistence.request();if(!phone){CarController.detach(this);documentReady=false;}web.onPause();Diagnostics.event(phone?"Phone controller covered":"Car player unavailable; playback stopped");}
- void resume(){if(closed)return;background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);active=true;web.onResume();invalidateSample();sampleDue=0;timer.removeCallbacks(sample);
-  if(phone){timer.removeCallbacks(controllerPoll);timer.post(controllerPoll);}else{CarController.attach(this);if(documentReady)CarController.ready(this);if(!documentReady||"about:blank".equals(web.getUrl()))web.loadUrl("https://m.youtube.com/");timer.post(sample);}
-  Diagnostics.event("View resumed");schedulePictureRefresh();
+ // A covered host is still connected: keep its document, polling and controller lease.
+ void cover(){if(phone||closed||!active||covered)return;coverPlayback();covered=true;cancelPictureRefresh();CookiePersistence.request();if(!background){pauseMedia();web.onPause();}Diagnostics.event("Car view covered; session retained; background audio="+background);}
+ void pause(){cancelPictureRefresh();active=false;covered=false;timer.removeCallbacks(controllerPoll);timer.removeCallbacks(sample);invalidateSample();CookiePersistence.request();if(!phone){CarController.detach(this);documentReady=false;}web.onPause();Diagnostics.event(phone?"Phone controller covered":"Car player unavailable; playback stopped");}
+ void resume(){if(closed)return;background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);boolean wasCovered=covered;covered=false;active=true;web.onResume();invalidateSample();sampleDue=0;timer.removeCallbacks(sample);
+  if(phone){timer.removeCallbacks(controllerPoll);timer.post(controllerPoll);}else{CarController.attach(this);if(documentReady)CarController.ready(this);if(!wasCovered&&(!documentReady||"about:blank".equals(web.getUrl())))web.loadUrl("https://m.youtube.com/");timer.post(sample);}
+  Diagnostics.event("View resumed");schedulePictureRefresh();if(wasCovered&&!phone)scheduleFullscreenReturn();
  }
  public boolean isCarView(){return !phone;}
  boolean carAvailable(){return !phone&&active&&!closed&&CarController.accepts(this,CarController.epoch(),CarController.request());}
@@ -263,6 +265,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   ownedScript("return window.__magdiPlayback?window.__magdiPlayback.resume():'not-ready';",value->Diagnostics.event("Resume request evaluated; playback result follows in observed state"));
  }
  void prepareDetach(){pause();hideFullscreen();hideSearch();}
+ void retainCoveredHost(){cover();hideSearch();}
  boolean handleBack(){if(controllerFullscreen){hideControllerFullscreen();return true;}if(fullscreen!=null){hideFullscreen();return true;}if(searchPanel!=null){hideSearch();return true;}if(web.canGoBack()){web.goBack();return true;}return false;}
  private void setContentVisibility(View view,int visibility){if(hiddenViews.containsKey(view))hiddenViews.put(view,visibility);else view.setVisibility(visibility);}
  private void hideChildren(){for(int i=0;i<getChildCount();i++){View child=getChildAt(i);if(child==content)continue;hiddenViews.put(child,child.getVisibility());child.setVisibility(GONE);}

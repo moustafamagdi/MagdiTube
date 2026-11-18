@@ -8,7 +8,7 @@ Download the APK from [GitHub Releases](https://github.com/moustafamagdi/MagdiTu
 
 From **0.1.25**, the phone is a controller only: browse, search and sign in there, then select a video for the available car player. The native panel shows connection, actual video title, state and progress, with play/pause, stop, seek, supported next/previous, retry and car fullscreen. Selections without an available car are rejected immediately and never queued.
 
-Open MM Tube on Android Auto before selecting a video. Leaving/closing its car interface or disconnecting stops playback and cancels pending requests. Reopening does not resume automatically; make a fresh selection. Closing the phone interface leaves an available car player running.
+Open MM Tube on Android Auto before selecting a video. From **0.1.31**, temporarily covering/leaving the car view retains its playback session while the car service remains bound (with Background audio enabled). Returning restores the same document and fullscreen state. Service unbind/disconnection still stops playback and cancels pending requests; reconnecting never autoplays. Closing the phone interface leaves an available car player running.
 
 The phone uses a separate WebView profile, native renderer mute, native media-request rejection and Android-injected HTML response CSP (including data/blob media). Service-worker network access is blocked in that profile. Unsupported WebView features disable phone browsing and request a WebView update. The car remains the only playback and audio-service target.
 
@@ -75,3 +75,9 @@ Phone controls now reflow into two rows on narrow screens and one row when wide 
 Stop is disabled when there is no selection or observed car media. It cancels a selected/loading/current video and returns the connected car to YouTube Home. A repeated idle Stop is a no-op. Disconnect still cancels and unloads without queuing playback; Stop stays connection-wide and cannot cross reconnection.
 
 Validation details and limits: [0.1.30 test record](research/CONTROLLER_LAYOUT_0.1.30.md).
+
+## Background session recovery (0.1.31)
+
+Car activity onStop is now a temporary cover, not a disconnect. Host recreation can reuse the same player while its car-service binding is alive. Sampling, request/document ownership and media controls stay active while covered; return avoids reloading Home even during an in-flight selection. Explicit Pause/Stop and disconnect invalidate delayed resume work. Service unbind/destroy still cancels playback immediately, with no phone fallback or reconnect queue.
+
+See [0.1.31 validation](research/BACKGROUND_SESSION_0.1.31.md). To reproduce the native fullscreen cover test, run `controller-native.mjs` followed by `controller-cover-fullscreen.mjs` against the same debug harness.
