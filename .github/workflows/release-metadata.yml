@@ -1,0 +1,48 @@
+name: Verify release APK and label for MM Auto
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to verify and label
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  label:
+    if: github.repository == 'moustafamagdi/MagdiTube'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Verify signed APK before publishing its versionCode label
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9-]+)?$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          count=$(jq '[.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk$")))] | length' release.json)
+          [[ "$count" == 1 ]]
+          jq '.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk$")))' release.json > asset.json
+          asset=$(jq -r .name asset.json)
+          id=$(jq -r .id asset.json)
+          digest=$(jq -r .digest asset.json)
+          [[ "$id" =~ ^[0-9]+$ ]]
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --output release.apk
+          actual=$(sha256sum release.apk | cut -d ' ' -f 1)
+          [[ "$digest" == "sha256:$actual" ]]
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          "$build_tools/apksigner" verify --print-certs release.apk > signature.txt
+          grep -Fx 'Signer #1 certificate SHA-256 digest: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a5ab65' signature.txt
+          "$build_tools/aapt" dump badging release.apk > badging.txt
+          grep -q "^package: name='com.magdi.tube' " badging.txt
+          code=$(sed -n "s/^package: .*versionCode='\([0-9]*\)'.*/\1/p" badging.txt)
+          [[ "$code" =~ ^[1-9][0-9]*$ ]]
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$id" -f "label=versionCode=$code" --jq '{name,label,digest}'
+          printf 'Verified %s: versionCode=%s, SHA-256=%s\n' "$asset" "$code" "$actual" >> "$GITHUB_STEP_SUMMARY"
