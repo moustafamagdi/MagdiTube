@@ -14,3 +14,7 @@ SHA-256: e191318bac5e33a6ee52d731b488b83fe937554b50c94649e65c4855a247c074.
 Certificate SHA-256: 6d9d30d8f427a6cfc0241831d1e324e684fe2aefda72925c89ef872bf3a5ab65.
 
 Device check: update without uninstalling. Open Search on the car, switch to Arabic and type a query containing د and ذ. Switch to English and submit a query; confirm the letters and search results.
+
+Publication: v0.1.35-keyboard-letters at dcacbab via successful [Actions run 44467596186](https://github.com/moustafamagdi/MagdiTube/actions/runs/44467596186). The temporary upload branch/worktree was removed after successful publication. No signing secrets were uploaded.
+
+The downloaded public APK matched the local SHA-256 and existing certificate, package, versionName and versionCode. releases/latest returned this non-preview release with MM-Tube-0.1.35.apk labeled versionCode=36. The unchanged MM Auto Releases.java parser passed an additional JVM test against the public release JSON: expected URL/digest/code selected, update offered from code 35, no update over codes 36/37. This is a parser test, not a physical MM Auto UI test.
