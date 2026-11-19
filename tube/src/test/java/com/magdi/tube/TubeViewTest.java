@@ -30,9 +30,14 @@ public class TubeViewTest {
  }
  @Test public void carKeyboardSubmitsEncodedSearchWithoutSystemIme() throws Exception {
   button(view,"Search").performClick();
-  button(view,"a").performClick();button(view,"Space").performClick();button(view,"b").performClick();button(view,"Go").performClick();
+  String english="abcdefghijklmnopqrstuvwxyz0123456789",arabic="ابتثجحخدذرزسشصضطظعغفقكلمنهويءأإآؤئءةى٠١٢٣٤٥٦٧٨٩";
+  for(char letter:english.toCharArray()){Button key=button(view,String.valueOf(letter));assertNotNull("Missing English key: "+letter,key);assertTrue(key.performClick());}
+  button(view,"Space").performClick();button(view,"عربي").performClick();
+  for(char letter:arabic.toCharArray()){Button key=button(view,String.valueOf(letter));assertNotNull("Missing Arabic key: "+letter,key);assertTrue(key.performClick());}
+  button(view,"د").performClick();button(view,"⌫").performClick();
+  button(view,"English").performClick();button(view,"Go").performClick();
   java.lang.reflect.Field field=TubeView.class.getDeclaredField("web");field.setAccessible(true);
-  assertEquals("https://m.youtube.com/results?search_query=a%20b",shadowOf((WebView)field.get(view)).getLastLoadedUrl());
+  assertEquals("https://m.youtube.com/results?search_query="+android.net.Uri.encode(english+" "+arabic),shadowOf((WebView)field.get(view)).getLastLoadedUrl());
   assertEquals(View.VISIBLE,view.getChildAt(0).getVisibility());
  }
  @Test public void searchBackRestoresToolbar(){button(view,"Search").performClick();assertTrue(view.handleBack());assertEquals(View.VISIBLE,view.getChildAt(0).getVisibility());}
