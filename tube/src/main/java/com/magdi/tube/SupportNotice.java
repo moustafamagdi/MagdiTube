@@ -23,10 +23,10 @@ final class SupportNotice {
                 return;
             }
             AlertDialog dialog = new AlertDialog.Builder(activity)
-                    .setTitle(ar ? "تقارير التشخيص مفعّلة" : "Diagnostic reports are enabled")
+                    .setTitle(ar ? "المساعدة في تحسين التطبيق" : "Help improve the app")
                     .setMessage(ar
-                            ? "المشاركة التلقائية مفعّلة افتراضيًا للمساعدة في إصلاح المشاكل وتحسين التطبيق فقط.\n\nنرسل أحداثًا تقنية وتوقيتاتها وموديل الجهاز وإصدارات البرامج ورقم دعم عشوائي يربط تقارير تطبيقات MM على هذا الموبايل. لا نرسل كلمات المرور أو بيانات الحساب أو محتوى المشاهدة أو البحث أو روابط البث.\n\nتصل التقارير إلى قاعدة بيانات المطور على Supabase في فرانكفورت، وتُحفظ حتى ٣٠ يومًا. الخدمة تستقبل عنوان IP للاتصال؛ لا نخزّنه في تقارير التشخيص.\n\nالإرسال بحد أقصى محاولة كل ساعتين لكل تطبيق. يمكنك إيقافه الآن أو من «الدعم والتشخيص» في أي وقت، وحذف التقارير المرسلة من الخيارات المتقدمة. كل تطبيق يحتفظ باختياره."
-                            : "Automatic sharing is on by default to diagnose problems and improve the app only.\n\nWe send technical events and their times, device model, software versions and a random support ID linking reports from your MM apps on this phone. We do not send passwords, account details, watched content, searches or stream URLs.\n\nReports go to the developer’s Supabase database in Frankfurt and are kept for up to 30 days. The service receives your IP for the connection; we do not store it in diagnostic reports.\n\nAt most one automatic attempt every 2 hours per app. Turn it off now or anytime in Support & diagnostics. Delete previously sent reports under Advanced options. Each app keeps its own setting.")
+                            ? "مشاركة تقارير تقنية مفعّلة لمساعدتنا في تحسين التطبيق وحل المشاكل. تشمل معلومات الجهاز ورقم الدعم، ولا تشمل كلمات المرور أو محتوى المشاهدة. يمكنك إيقافها الآن أو لاحقًا من الإعدادات."
+                            : "Technical reports are enabled to help us fix problems and improve the app. They include device information and a support ID, but no passwords or watched content. You can turn sharing off now or anytime in Settings.")
                     .setPositiveButton(ar ? "متابعة" : "Continue", (d, w) -> choose(activity, true, changed))
                     .setNegativeButton(ar ? "إيقاف المشاركة" : "Turn off sharing", (d, w) -> choose(activity, false, changed))
                     .setCancelable(false).create();

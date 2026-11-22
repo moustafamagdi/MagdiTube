@@ -89,9 +89,11 @@ public class SupportDefaultsTest {
         assertTrue(dialog.isShowing());
         assertEquals("Turn off sharing", dialog.getButton(AlertDialog.BUTTON_NEGATIVE).getText().toString());
         String notice = ((TextView) dialog.findViewById(android.R.id.message)).getText().toString();
-        assertTrue(notice.contains("random support ID"));
+        assertTrue(notice.contains("support ID"));
         assertTrue(notice.contains("passwords"));
-        assertTrue(notice.contains("2 hours"));
+        assertTrue(notice.contains("Settings"));
+        assertFalse(notice.contains("Supabase"));
+        assertFalse(notice.contains("Frankfurt"));
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick(); drain();
         assertTrue(SupportPreferences.canSendAutomatically(prefs));
         assertNotNull(context.getSystemService(JobScheduler.class).getPendingJob(SupportReporter.JOB));
@@ -113,7 +115,7 @@ public class SupportDefaultsTest {
         AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
         assertEquals("إيقاف المشاركة", dialog.getButton(AlertDialog.BUTTON_NEGATIVE).getText().toString());
         String notice = ((TextView) dialog.findViewById(android.R.id.message)).getText().toString();
-        assertTrue(notice.contains("رقم دعم عشوائي"));
+        assertTrue(notice.contains("رقم الدعم"));
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick(); drain();
         assertFalse(activity.get().automatic.isChecked());
         assertFalse(SupportPreferences.initialize(prefs));
