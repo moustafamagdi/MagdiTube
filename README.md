@@ -99,3 +99,7 @@ The updated MM apps can show one random Support ID on the same Android profile t
 ## Fullscreen Fill correction (0.1.46)
 
 Fill now expands the video and its media wrappers when YouTube fullscreens a player container. Previously the control could report Fill without changing the fitted video box. Full picture and exiting fullscreen restore the original layout; player controls remain unscaled. See [validation and device checks](research/FULLSCREEN_FILL_0.1.46.md).
+
+## Aligned phone controls (0.1.47)
+
+Phone controller buttons now have aligned edges, rounded outlines and consistent gaps. Portrait uses separate playback, navigation and display rows; wide screens use two rows. Rows accommodate wrapped Arabic/English labels and reflow for enlarged text. Disabled controls still follow the actual car state. See [validation and device checks](research/CONTROLLER_LAYOUT_0.1.47.md).
