@@ -1,0 +1,21 @@
+package com.magdi.tube;
+import org.junit.*;import static org.junit.Assert.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.Config;import org.json.*;import java.util.concurrent.*;import java.util.concurrent.atomic.*;import android.content.*;import android.widget.*;import android.view.*;
+@RunWith(RobolectricTestRunner.class) @Config(sdk=35,application=android.app.Application.class)
+public class SupportFlowTest {
+ void drain() throws Exception {SupportReporter.io.submit(()->{}).get(10,TimeUnit.SECONDS);org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();}
+ Button button(View v,String label){if(v instanceof Button&&((Button)v).getText().toString().equals(label))return (Button)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){Button b=button(((ViewGroup)v).getChildAt(i),label);if(b!=null)return b;}return null;}
+ @Test public void consentSendDisableDeleteAndSimpleUi() throws Exception {
+  Context app=RuntimeEnvironment.getApplication();SupportReporter.init(app);drain();SharedPreferences p=app.getSharedPreferences("mm_support_v1",0);assertFalse(p.getBoolean("enabled",false));
+  AtomicInteger sends=new AtomicInteger();AtomicReference<JSONObject> body=new AtomicReference<>();SupportReporter.delivery=b->{sends.incrementAndGet();body.set(new JSONObject(b.toString()));return 200;};
+  SupportReporter.record("car media=playing time=3 ready=4 frames=75 engine=native code=0",System.currentTimeMillis());drain();SupportReporter.automatic(()->{});drain();assertEquals(0,sends.get());
+  SupportActivity a=Robolectric.buildActivity(SupportActivity.class).setup().get();drain();View root=a.getWindow().getDecorView();assertNotNull(button(root,"Copy support ID"));assertNotNull(button(root,"Send report now"));assertNotNull(button(root,"Share a report manually"));
+  button(root,"Send report now").performClick();assertEquals(0,sends.get());android.app.AlertDialog dialog=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();assertNotNull(dialog);dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE).performClick();drain();assertEquals(0,sends.get());
+  button(root,"Send report now").performClick();org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog().getButton(android.content.DialogInterface.BUTTON_POSITIVE).performClick();drain();drain();assertEquals(1,sends.get());assertFalse(p.getBoolean("enabled",false));assertFalse(body.get().toString().contains("token"));assertFalse(body.get().toString().contains("password"));
+  String oldId=p.getString("id","");SupportReporter.changeConsent(true,null);drain();assertTrue(p.getBoolean("enabled",false));p.edit().putLong("lastAttempt",0).putLong("ack",0).commit();SupportReporter.automatic(()->{});drain();assertEquals(2,sends.get());SupportReporter.changeConsent(false,null);drain();SupportReporter.automatic(()->{});drain();assertEquals(2,sends.get());
+  SupportReporter.delivery=b->{return 503;};SupportReporter.erase(s->{});drain();assertEquals(oldId,p.getString("id",""));
+  SupportReporter.delivery=b->200;SupportReporter.erase(s->{});drain();assertNotEquals(oldId,p.getString("id",""));assertFalse(p.getBoolean("enabled",false));
+  for(int i=0;i<400;i++){SupportReporter.record("Stream HTTP status=503",System.currentTimeMillis()+i);if(i%60==0)drain();}drain();SupportReporter.send(s->{});drain();
+  SupportReporter.record("Stream HTTP status=502",System.currentTimeMillis()-2*86400000L);drain();java.io.File historyFile=new java.io.File(app.getNoBackupFilesDir(),"support-v1.json");JSONArray history=new JSONArray(new String(java.nio.file.Files.readAllBytes(historyFile.toPath()),java.nio.charset.StandardCharsets.UTF_8));assertTrue(history.length()<=256);for(int i=0;i<history.length();i++)assertTrue(history.getJSONObject(i).getLong("at")>System.currentTimeMillis()-86400000L);
+  assertTrue(new java.io.File(app.getNoBackupFilesDir(),"support-v1.json").length()<65536);a.finish();
+ }
+}

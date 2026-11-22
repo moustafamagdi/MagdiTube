@@ -181,7 +181,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  Button ads=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"),ar?"منع الإعلانات التجريبي":"Experimental ad blocking");
  Button audio=button(ar?"صوت الخلفية":"Background audio",ar?"تشغيل أو إيقاف صوت الخلفية":"Toggle background audio");
  audio.setOnClickListener(v->{background=!background;c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
- Button logs=button(ar?"جلسات اللوج":"Log sessions",ar?"نسخ أو تصدير جلسة اللوج":"Copy or export a log session");
+ Button logs=button(ar?"الدعم والتشخيص":"Support & diagnostics",ar?"إرسال تقرير دعم":"Send a support report");
  Button setup=button(ar?"إعداد Android Auto":"Android Auto setup",ar?"فحص وإعداد مصدر التثبيت":"Check and configure installation source");
  setup.setOnClickListener(v->c.startActivity(new android.content.Intent(c,InstallSetupActivity.class)));
  more.setOnClickListener(v->{PopupMenu menu=new PopupMenu(c,more);Button[] options={subscriptions,account,reload,ads,audio,setup,logs};for(int i=0;i<options.length;i++)menu.getMenu().add(0,i,i,options[i].getText());menu.getMenu().add(0,7,7,ar?"إعادة تهيئة الشاشة":"Reset browsing screen");menu.setOnMenuItemClickListener(item->{if(item.getItemId()==7)reload.performLongClick();else options[item.getItemId()].performClick();return true;});menu.show();});

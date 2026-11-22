@@ -85,3 +85,7 @@ Validation details and limits: [0.1.30 test record](research/CONTROLLER_LAYOUT_0
 Car activity onStop is now a temporary cover, not a disconnect. Host recreation can reuse the same player while its car-service binding is alive. Sampling, request/document ownership and media controls stay active while covered; return avoids reloading Home even during an in-flight selection. Explicit Pause/Stop and disconnect invalidate delayed resume work. Service unbind/destroy still cancels playback immediately, with no phone fallback or reconnect queue.
 
 See [0.1.31 validation](research/BACKGROUND_SESSION_0.1.31.md). To reproduce the native fullscreen cover test, run `controller-native.mjs` followed by `controller-cover-fullscreen.mjs` against the same debug harness.
+
+## Simple support reports
+
+The phone now opens **Support & diagnostics** with an installation Support ID, consent-based automatic reports, Send report now, deletion, and simple manual sharing. Previous complete local sessions remain under Advanced during rollout. See [support and privacy](SUPPORT.md).

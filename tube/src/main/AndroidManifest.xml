@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 <uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
@@ -11,6 +12,8 @@
 <application tools:ignore="MissingIntentFilterForMediaSearch" android:name=".Diagnostics" android:label="@string/app_name" android:icon="@drawable/ic_tube" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false" android:usesCleartextTraffic="false" android:hardwareAccelerated="true" android:enableOnBackInvokedCallback="false">
 <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
 <activity android:name=".InstallSetupActivity" android:exported="false"/>
+<activity android:name=".SupportActivity" android:exported="false"/>
+<service android:name=".SupportUploadJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
 <activity android:name=".DiagnosticsActivity" android:exported="false"/>
 <receiver android:name=".InstallResultReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
 <service android:name=".PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>

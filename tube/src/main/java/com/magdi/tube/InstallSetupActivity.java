@@ -19,7 +19,7 @@ public final class InstallSetupActivity extends Activity {
   status=new TextView(this);status.setTextSize(16);panel.addView(status);
   install=action(panel,ar?"إعادة تثبيت للإعداد":"Reinstall for setup",()->new android.app.AlertDialog.Builder(this).setMessage(ar?"سيُعاد تثبيت نفس النسخة بتوقيعها الحالي مع الاحتفاظ بالبيانات. وافق على نافذة أندرويد، ثم افتح التطبيق مجددًا لفحص النتيجة. قد تختلف النتيجة حسب الهاتف.":"Reinstall this same signed version, keeping app data. Confirm Android's installer, then reopen the app to check the result. Results depend on the phone.").setNegativeButton(ar?"إلغاء":"Cancel",null).setPositiveButton(ar?"متابعة":"Continue",(d,w)->prepare()).show());
   action(panel,ar?"فحص النتيجة":"Check result",()->{InstallSetup.observe(this,"manual check");refresh();});
-  action(panel,ar?"جلسات اللوج":"Log sessions",()->Diagnostics.open(this));
+  action(panel,ar?"الدعم والتشخيص":"Support & diagnostics",()->Diagnostics.open(this));
   action(panel,ar?"رجوع":"Back",this::finish);
  }
  private Button action(LinearLayout panel,String label,Runnable run){Button b=new Button(this);b.setText(label);b.setTextSize(18);b.setAllCaps(false);panel.addView(b,new LinearLayout.LayoutParams(-1,(int)(60*getResources().getDisplayMetrics().density)));b.setOnClickListener(v->run.run());return b;}
