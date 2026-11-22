@@ -11,6 +11,7 @@ final class CarPlaybackSession {
  private static MutableContextWrapper context;
  private static Object host,connection;
  private static boolean visible;
+ private static boolean disconnectedPage;
  static boolean visible(){return connected()&&host!=null&&visible;}
  static void visibility(Object token,boolean value){if(host==token)visible=value;}
  static boolean show(android.content.Intent intent){if(!connected()||!(host instanceof TubeCarActivity))return false;((TubeCarActivity)host).startCarActivity(intent);return true;}
@@ -18,14 +19,22 @@ final class CarPlaybackSession {
  private static boolean hasCarSession;
  static TubeView attach(Context car,Object token){
   if(!hasCarSession||(host==null&&android.os.SystemClock.elapsedRealtime()-detachedAt>=300000)){Diagnostics.startSession("Car");hasCarSession=true;}
+  // A covered host is reusable, but a disconnected WebView can retain the
+  // phone display's renderer scale. Recreate only on the next real attachment.
+  if(disconnectedPage&&page!=null){
+   if(page.getParent() instanceof ViewGroup)((ViewGroup)page.getParent()).removeView(page);
+   page.close();page=null;context=null;host=null;
+   Diagnostics.event("Car display recreated after disconnection");
+  }
+  disconnectedPage=false;
   if(page==null){context=new MutableContextWrapper(car);page=new TubeView(context);Diagnostics.event("Car playback session created");}
   else {if(host!=token){if(connected())page.retainCoveredHost();else page.pause();}context.setBaseContext(car);Diagnostics.event("Car playback session reused");}
   if(page.getParent() instanceof ViewGroup)((ViewGroup)page.getParent()).removeView(page);
   if(host!=token)visible=false;host=token;return page;
  }
  static boolean connected(){return connection!=null;}
- static void connectionAvailable(Object service){if(connection!=null&&connection!=service&&page!=null)page.pause();if(connection!=service)visible=false;connection=service;}
- static void connectionLost(Object service){if(connection!=service)return;connection=null;visible=false;if(page!=null)page.pause();Diagnostics.event("Car service disconnected; playback cancelled");}
+ static void connectionAvailable(Object service){if(connection!=null&&connection!=service&&page!=null){page.pause();disconnectedPage=true;}if(connection!=service)visible=false;connection=service;}
+ static void connectionLost(Object service){if(connection!=service)return;connection=null;visible=false;disconnectedPage=true;if(page!=null)page.pause();Diagnostics.event("Car service disconnected; playback cancelled");}
  static boolean isHost(Object token){return host==token;}
  static void detach(Object token){
   if(host!=token||page==null)return;

@@ -133,6 +133,9 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }};if(phone)phoneSafe=ControllerCookies.prepare(web);web.setBackgroundColor(Color.BLACK);content=new FrameLayout(c);content.addView(web,new FrameLayout.LayoutParams(-1,-1));addView(content,new LinearLayout.LayoutParams(-1,0,1));
  CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
  web.getSettings().setJavaScriptEnabled(true);web.getSettings().setDomStorageEnabled(true);
+ // The legacy car host renders in its own density, which can differ from the
+ // phone display cached by Chromium. Initial scale is physical percent, not dp.
+ if(!phone)web.setInitialScale(Math.max(1,Math.round(c.getResources().getDisplayMetrics().density*100)));
  web.getSettings().setAllowFileAccess(false);web.getSettings().setAllowContentAccess(false);
  web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
  web.getSettings().setMediaPlaybackRequiresUserGesture(phone);

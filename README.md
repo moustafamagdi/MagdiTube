@@ -28,6 +28,8 @@ On the phone, **Log sessions** lets you copy or export a selected recording part
 
 If the screen becomes stuck or unusually small, hold **Reload** to rebuild the view and return to YouTube Home without clearing your account cookies. Fullscreen uses an overlay that preserves the underlying page's measured size; diagnostics record native and page dimensions to investigate device-specific failures. This recovery closes current playback; open the video again.
 
+From **0.1.42**, the car WebView starts at the car host's display density instead of relying on Chromium's phone-derived default. A genuine car-service disconnect invalidates the retained view, so the next car attachment creates a fresh page at the correct scale. Temporary covers within the same connection still retain the existing page and playback session. Phone browsing scale, cookies and settings are unchanged. See [viewport verification](research/CAR_VIEWPORT_0.1.42.md).
+
 Regional Google account redirects are supported using an exact list of official Google domains; sign-in remains phone-only.
 
 ## Build and test
