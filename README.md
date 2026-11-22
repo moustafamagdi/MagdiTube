@@ -95,3 +95,7 @@ The phone now opens **Support & diagnostics** with an installation Support ID, c
 ## Shared Support ID (0.1.37)
 
 The updated MM apps can show one random Support ID on the same Android profile through MM Auto. Updates preserve data; linking keeps old installation IDs searchable. Consent remains separate per app, with renewed consent for shared-ID reporting. Settings now group secondary troubleshooting tools under Advanced. See [support guide](SUPPORT.md) for setup, privacy, deletion and test limitations.
+
+## Fullscreen Fill correction (0.1.46)
+
+Fill now expands the video and its media wrappers when YouTube fullscreens a player container. Previously the control could report Fill without changing the fitted video box. Full picture and exiting fullscreen restore the original layout; player controls remain unscaled. See [validation and device checks](research/FULLSCREEN_FILL_0.1.46.md).

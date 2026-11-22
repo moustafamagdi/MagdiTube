@@ -233,7 +233,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(!carAvailable()||!CarController.accepts(this,epoch,request)||!CarController.can(action))return;
   if("pause".equals(action)||"play".equals(action)||"next".equals(action)||"previous".equals(action)){resumeCommandGeneration++;pendingResume=false;}
   if("fullscreen".equals(action)){toggleControllerFullscreen();return;}
-  if("fill".equals(action)){ownedScript("return c.setFill("+(value==1)+",t,d,id,g);",null);return;}
+  if("fill".equals(action)){ownedScript("return c.setFill("+(value==1)+",t,d,id,g);",result->Diagnostics.event("Fullscreen picture mode="+(value==1?"fill":"full-picture")+" result="+("true".equals(result)?"applied":"rejected")));return;}
   ownedScript("return c.command("+org.json.JSONObject.quote(action)+","+value+",t,d,id,g);",null);
  }
  // The JS guard checks ownership when Chromium actually executes, not just when queued.

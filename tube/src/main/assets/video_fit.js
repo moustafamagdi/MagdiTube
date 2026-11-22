@@ -1,14 +1,38 @@
 (()=>{
  if(window.MMVideoFit)return;
- let inline=false,fill=false,previous=null,saved=[];
+ let inline=false,fill=false,previous=null,previousRoot=null,saved=new Map(),path=[],observer=null;
  const video=()=>document.querySelector('video');
  const fullscreen=v=>!!v&&(inline||!!document.fullscreenElement&&(document.fullscreenElement===v||document.fullscreenElement.contains(v)));
- function restore(){if(previous)for(const [name,value,priority] of saved){if(value)previous.style.setProperty(name,value,priority);else previous.style.removeProperty(name);}previous=null;saved=[];}
+ function restore(){
+  observer?.disconnect();observer=null;
+  for(const [element,style] of saved){if(style===null)element.removeAttribute('style');else element.setAttribute('style',style);}
+  saved=new Map();path=[];previous=null;previousRoot=null;
+ }
+ function patch(element,properties){
+  // Save the complete declaration so shorthand overrides also restore original longhands.
+  if(!saved.has(element))saved.set(element,element.getAttribute('style'));
+  for(const [name,value] of Object.entries(properties))if(element.style.getPropertyValue(name)!==value||element.style.getPropertyPriority(name)!=='important')element.style.setProperty(name,value,'important');
+ }
  function apply(){
-  const v=video();if(previous&&(!fullscreen(v)||previous!==v||!fill))restore();
-  if(v&&fullscreen(v)&&fill){
-   if(previous!==v){previous=v;saved=['object-fit','object-position'].map(name=>[name,v.style.getPropertyValue(name),v.style.getPropertyPriority(name)]);}
-   v.style.setProperty('object-fit','cover','important');v.style.setProperty('object-position','50% 50%','important');
+  const v=video(),root=document.fullscreenElement;
+  const active=!!v&&fullscreen(v)&&fill;
+  const next=[];
+  // Native YouTube fullscreen may promote a container, leaving fitted pixel dimensions
+  // on the media wrappers. Stretch only that video's ancestor path; never scale controls.
+  if(active&&!inline&&root&&root!==v)for(let el=v.parentElement;el&&el!==root;el=el.parentElement)next.push(el);
+  if(previous&&(!active||previous!==v||previousRoot!==root||path.length!==next.length||path.some((el,i)=>el!==next[i])))restore();
+  if(!active)return;
+  previous=v;previousRoot=root;path=next;
+  patch(v,{'object-fit':'cover','object-position':'50% 50%'});
+  if(!inline&&root&&root!==v){
+   const box={inset:'0px',width:'100%',height:'100%','min-width':'0px','min-height':'0px','max-width':'none','max-height':'none',margin:'0px',padding:'0px',border:'0px','box-sizing':'border-box','aspect-ratio':'auto',transform:'none',translate:'none',rotate:'none',scale:'none'};
+   patch(root,{...box,position:'fixed',width:'100vw',height:'100vh',overflow:'hidden'});
+   for(const el of path)patch(el,{...box,display:'block',position:'absolute',filter:'none','backdrop-filter':'none',perspective:'none',contain:'none','content-visibility':'visible',clip:'auto','clip-path':'none',mask:'none',overflow:'visible'});
+   patch(v,{...box,position:'absolute'});
+  }
+  if(!observer){
+   observer=new MutationObserver(apply);
+   for(const el of saved.keys())observer.observe(el,{attributes:true,attributeFilter:['style']});
   }
  }
  window.MMVideoFit={

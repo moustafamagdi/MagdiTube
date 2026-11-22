@@ -47,6 +47,32 @@ try{
  await phone(full);await until(car,'!MMVideoFit.state().fullscreen');await until(phone,'!'+button+'.enabled');
  await car('await fitVideo.requestFullscreen()');await until(car,'!!document.fullscreenElement');await until(phone,button+'.enabled');await phone(tap);await until(car,"MMVideoFit.state().fill&&getComputedStyle(fitVideo).objectFit==='cover'");
  await until(phone,button+".text==='Full picture'");await phone(tap);await until(car,"!MMVideoFit.state().fill&&getComputedStyle(fitVideo).objectFit==='contain'");await car('await document.exitFullscreen()');await until(phone,'!'+button+'.enabled');pass('Native WebView fullscreen supports both modes and exit disables the phone button');
+ if(tube){
+  // YouTube can fullscreen the player container while keeping its video and media wrapper
+  // at the fitted pixel size. object-fit:cover alone is then a visual no-op.
+  await phone('Harness.viewport(1280,480)');await until(car,'innerWidth===1280');
+  await car(`window.fitRoot=document.getElementById('player');fitRoot.style.cssText='width:100vw;height:100vh;background:black';
+   window.fitBox=document.createElement('div');fitBox.style.cssText='position:absolute;width:640px;height:360px;left:320px;top:60px;transform:translateZ(0);overflow:hidden';fitRoot.append(fitBox);fitBox.append(fitVideo);
+   fitVideo.style.cssText='width:640px;height:360px;object-fit:contain';window.originalBoxStyle=fitBox.getAttribute('style');window.originalVideoStyle=fitVideo.getAttribute('style');
+   window.fitControls=document.createElement('button');fitControls.textContent='Player control';fitControls.style.cssText='position:absolute;right:10px;bottom:10px;width:100px;height:40px;z-index:20';fitRoot.append(fitControls);
+   await fitRoot.requestFullscreen();`);
+  await until(phone,button+'.enabled');await phone(tap);await until(car,'MMVideoFit.state().fill');
+  const fills=()=>car(`const r=fitVideo.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}`);
+  let r=await fills();assert(Math.abs(r.x)<2&&Math.abs(r.y)<2&&Math.abs(r.w-r.vw)<2&&Math.abs(r.h-r.vh)<2,'Fill must cover the viewport, not merely report cover: '+JSON.stringify(r));
+  assert(await car(`const r=fitControls.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===fitControls&&fitControls.offsetWidth===100`));
+  await until(phone,button+".text==='Full picture'");await wait(700);
+  screenshot('wrapped-fill');
+  await car("fitBox.style.width='420px';fitVideo.style.cssText='width:420px;height:200px;object-fit:contain'");
+  await until(car,"fitVideo.getBoundingClientRect().width===innerWidth&&fitVideo.getBoundingClientRect().height===innerHeight&&getComputedStyle(fitVideo).objectFit==='cover'");
+  await phone('Harness.viewport(960,540)');await until(car,'innerWidth===960&&innerHeight===540');
+  r=await fills();assert(Math.abs(r.w-r.vw)<2&&Math.abs(r.h-r.vh)<2,'Resize must retain Fill geometry');
+  await until(phone,button+".text==='Full picture'");
+  await phone(tap);await until(car,'!MMVideoFit.state().fill');
+  assert(await car('return fitBox.getAttribute("style")===originalBoxStyle&&fitVideo.getAttribute("style")===originalVideoStyle'));
+  await until(phone,button+".text==='Fill screen'");await phone(tap);await until(car,'MMVideoFit.state().fill');await car('await document.exitFullscreen()');await until(phone,'!'+button+'.enabled');
+  assert(await car('return fitBox.getAttribute("style")===originalBoxStyle&&fitVideo.getAttribute("style")===originalVideoStyle&&fitVideo.currentSrc===fitSource'));
+  pass('Fullscreen player-container Fill changes actual geometry, keeps controls clickable and restores original styles on Fit/exit');
+ }
  assert(await phone(tube?"return !document.querySelector('video')&&Harness.muted()==='true'":"return v.paused&&!v.getAttribute('src')&&v.getVideoPlaybackQuality().totalVideoFrames===0"));pass('No phone media playback');
  await phone(cmd('stop'));await until(phone,'!'+button+'.enabled');pass('Stop disables Fill and removes the fullscreen player');
  console.log('PASS fullscreen fit/fill native regression: '+(tube?'Tube':'IPTV'));
