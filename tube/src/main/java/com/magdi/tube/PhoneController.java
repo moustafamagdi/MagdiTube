@@ -12,6 +12,7 @@ final class PhoneController extends LinearLayout {
  private final SeekBar seek;
  private final Map<String,Button> buttons=new LinkedHashMap<>();
  private final boolean ar;
+ private final CarLaunchRequest launch;private final Button openCar;private final TextView launchStatus;
  private final LinearLayout controls;
  private boolean wide;
  private long epoch=-1,request=-1,owner=-1,seekEpoch,seekRequest,seekOwner;
@@ -24,25 +25,38 @@ final class PhoneController extends LinearLayout {
   seek=new SeekBar(context);seek.setMax(1000);addView(seek,new LayoutParams(-1,dp(40)));
   seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){}public void onStartTrackingTouch(SeekBar b){dragging=true;seekEpoch=epoch;seekRequest=request;seekOwner=owner;seekDuration=duration;}public void onStopTrackingTouch(SeekBar b){dragging=false;command("seek",seekDuration*b.getProgress()/1000,seekEpoch,seekRequest,seekOwner);}});
   controls=new LinearLayout(context);controls.setOrientation(VERTICAL);addView(controls);
-  String[] actions={"play","pause","stop","rewind","forward","previous","next","retry","fullscreen"};
-  String[] labels=ar?new String[]{"تشغيل","إيقاف مؤقت","إيقاف","−10 ث","+10 ث","السابق","التالي","إعادة المحاولة","ملء شاشة العربية"}:new String[]{"Play","Pause","Stop","−10s","+10s","Previous","Next","Retry","Car fullscreen"};
+  String[] actions={"play","pause","stop","rewind","forward","previous","next","retry","fullscreen","open"};
+  String[] labels=ar?new String[]{"تشغيل","إيقاف مؤقت","إيقاف","−10 ث","+10 ث","السابق","التالي","إعادة المحاولة","ملء شاشة العربية","فتح على العربية"}:new String[]{"Play","Pause","Stop","−10s","+10s","Previous","Next","Retry","Car fullscreen","Open on car"};
   for(int i=0;i<actions.length;i++){String action=actions[i];Button b=new Button(context);b.setText(labels[i]);b.setTextSize(12);b.setAllCaps(false);b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(dp(2),0,dp(2),0);b.setTextColor(Color.WHITE);b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(action.equals("play")||action.equals("pause")?0xff176d66:0xff253449));b.setContentDescription(action.equals("fullscreen")?(ar?"ملء شاشة العربية":"Toggle car fullscreen"):labels[i]);long[] gesture={-1,-1,-1};b.setOnTouchListener((v,event)->{if(event.getActionMasked()==android.view.MotionEvent.ACTION_DOWN){gesture[0]=epoch;gesture[1]=request;gesture[2]=owner;}if(event.getActionMasked()==android.view.MotionEvent.ACTION_CANCEL)gesture[0]=-1;return false;});b.setOnClickListener(v->{command(action,0,gesture[0]<0?epoch:gesture[0],gesture[0]<0?request:gesture[1],gesture[0]<0?owner:gesture[2]);gesture[0]=-1;});buttons.put(action,b);}
-  arrange(false);update();
+  arrange(false);
+  openCar=buttons.get("open");
+  launchStatus=new TextView(context);launchStatus.setTextColor(0xffb6c9d8);launchStatus.setTextSize(12);addView(launchStatus);
+  launch=new CarLaunchRequest(context,TubeService.class,this::updateLaunch);openCar.setOnClickListener(v->launch.request());updateLaunch();update();
  }
  // Reflow by the actual available width, including split-screen and large font settings.
  private void arrange(boolean horizontal){wide=horizontal;for(Button b:buttons.values())if(b.getParent()!=null)((android.view.ViewGroup)b.getParent()).removeView(b);controls.removeAllViews();LinearLayout row=null;int i=0;for(Button b:buttons.values()){if(i==0||(!wide&&i==5)){row=new LinearLayout(getContext());controls.addView(row,new LayoutParams(-1,dp(48)));}row.addView(b,new LayoutParams(0,dp(48),1));i++;}}
  @Override protected void onMeasure(int widthSpec,int heightSpec){boolean horizontal=MeasureSpec.getSize(widthSpec)>=dp((int)(720*Math.max(1,getResources().getConfiguration().fontScale)));if(horizontal!=wide)arrange(horizontal);super.onMeasure(widthSpec,heightSpec);}
- void unavailable(){Toast.makeText(getContext(),ar?"وصّل Android Auto وافتح MM Tube على شاشة العربية. الاختيار لم يُحفظ.":"Connect Android Auto and open MM Tube on the car. Selection was not saved.",Toast.LENGTH_LONG).show();}
- void select(String url,long expected){if(!CarController.select(url,expected))unavailable();update();}
- private void command(String action,double value,long e,long r,long o){if(!CarController.command(action,value,e,r,o)){if(!CarController.available())unavailable();else Toast.makeText(getContext(),ar?"الأمر غير متاح في المشغّل الحالي":"Command unavailable in the current player",Toast.LENGTH_SHORT).show();}update();}
- void update(){JSONObject s=CarController.state(),p=s.optJSONObject("playback");epoch=s.optLong("epoch");request=s.optLong("request");owner=s.optLong("owner");boolean connected=s.optBoolean("connected"),video=p!=null&&p.optBoolean("hasVideo")&&p.optInt("ready")>0;
+ void unavailable(){Toast.makeText(getContext(),ar?"مشغّل العربية غير جاهز. حاولنا فتحه؛ اختر الفيديو مجددًا بعد ظهوره.":"Car player is not ready. Opening was requested; select the video again when ready.",Toast.LENGTH_LONG).show();}
+ void select(String url,long expected){if(!CarController.select(url,expected)){launch.request();unavailable();}else launch.request();update();}
+ private void command(String action,double value,long e,long r,long o){if("open".equals(action)){launch.request();return;}if("stop".equals(action))launch.cancel();if(!CarController.command(action,value,e,r,o)){if(!CarController.available())unavailable();else Toast.makeText(getContext(),ar?"الأمر غير متاح في المشغّل الحالي":"Command unavailable in the current player",Toast.LENGTH_SHORT).show();}update();}
+ void update(){updateLaunch();JSONObject s=CarController.state(),p=s.optJSONObject("playback");epoch=s.optLong("epoch");request=s.optLong("request");owner=s.optLong("owner");boolean connected=s.optBoolean("connected"),video=p!=null&&p.optBoolean("hasVideo")&&p.optInt("ready")>0;
   String phase=s.optString("phase");String label;
   switch(phase){case "stale":label=ar?"جارٍ انتظار حالة مشغّل العربية…":"Waiting for car player status…";break;case "buffering":label=ar?"جارٍ التخزين المؤقت…":"Car connected • Buffering";break;case "ended":label=ar?"انتهى الفيديو":"Car connected • Ended";break;case "sending":label=ar?"جارٍ الإرسال للعربية…":"Sending to car…";break;case "loading":label=ar?"جارٍ التحميل على العربية…":"Loading on car…";break;case "playing":label=ar?"العربية متصلة • يعمل":"Car connected • Playing";break;case "paused":label=ar?"العربية متصلة • متوقف مؤقتًا":"Car connected • Paused";break;case "error":label=ar?"تعذر بدء الفيديو. افحص صفحة العربية وتسجيل الدخول ثم أعد المحاولة.":"Could not start video. Check car page/sign-in, then Retry.";break;default:label=connected?(ar?"مشغّل العربية جاهز":"Car player ready"):(ar?"وصّل Android Auto وافتح MM Tube على العربية":"Connect Android Auto and open MM Tube on the car");}
   double position=p==null?0:p.optDouble("time",0);duration=p==null?0:p.optDouble("duration",0);
   state.setText(label+(video?" • "+clock(position)+" / "+clock(duration):""));title.setText(p==null?"":p.optString("title"));title.setVisibility(title.length()==0?GONE:VISIBLE);seek.setVisibility(video?VISIBLE:GONE);
   seek.setEnabled(CarController.can("seek")&&duration>0);if(!dragging)seek.setProgress(duration>0?(int)(position*1000/duration):0);
-  for(Map.Entry<String,Button> entry:buttons.entrySet()){String a=entry.getKey();boolean enabled=a.equals("stop")?CarController.canStop():a.equals("retry")?connected&&s.optBoolean("retry"):CarController.can(a);entry.getValue().setEnabled(enabled);entry.getValue().setAlpha(enabled?1f:0.38f);}
+  for(Map.Entry<String,Button> entry:buttons.entrySet()){String a=entry.getKey();boolean enabled=a.equals("open")?!launch.pending():a.equals("stop")?CarController.canStop():a.equals("retry")?connected&&s.optBoolean("retry"):CarController.can(a);entry.getValue().setEnabled(enabled);entry.getValue().setAlpha(enabled?1f:0.38f);}
 
+ }
+ void cancelLaunch(){launch.cancel();}
+ private void updateLaunch(){openCar.setEnabled(!launch.pending());String text;
+  switch(launch.status()){
+   case "opening":text=ar?"جارٍ طلب فتح شاشة العربية…":"Requesting car screen…";break;
+   case "opened":text=ar?"واجهة العربية مفتوحة.":"Car screen is open.";break;
+   case "denied":text=ar?"Android Auto لم يسمح بالفتح. افتح MM Tube من شاشة العربية.":"Android Auto denied opening. Open MM Tube on the car.";break;
+   case "timeout":case "unavailable":text=ar?"تعذر تأكيد فتح الواجهة. وصّل Android Auto وافتح MM Tube من شاشة العربية.":"Could not confirm opening. Connect Android Auto and open MM Tube on the car.";break;
+   default:text="";
+  }launchStatus.setText(text);launchStatus.setVisibility(text.isEmpty()?GONE:VISIBLE);
  }
  private int dp(int value){return (int)(value*getResources().getDisplayMetrics().density+0.5f);}
  private String clock(double seconds){if(!Double.isFinite(seconds)||seconds<0)return "--:--";return String.format(Locale.ROOT,"%d:%02d",(long)seconds/60,(long)seconds%60);}
