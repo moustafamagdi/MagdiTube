@@ -34,6 +34,7 @@ public class MediaCardTest {
   MediaCardService.observe(view,playing,muted,ready,time,art);
  }
  private PlaybackStateCompat state(){return PlaybackStateCompat.fromPlaybackState(CapturedSession.published);}
+ @Test public void carObservationBindsAutomaticallyAndPauseKeepsBinding(){observe(phone,true,false,true,1000);assertEquals(0,shadowOf(activity.getApplication()).getBoundServiceConnections().size());observe(car,true,false,true,1000);assertEquals(1,shadowOf(activity.getApplication()).getBoundServiceConnections().size());observe(car,false,false,true,1000);assertEquals(1,shadowOf(activity.getApplication()).getBoundServiceConnections().size());assertEquals(0,shadowOf(activity.getApplication()).getUnboundServiceConnections().size());car.pause();assertTrue(shadowOf(activity.getApplication()).getUnboundServiceConnections().size()>0);assertNull(MediaCardService.target());assertEquals(0,state().getActions());}
  @Test public void connectionAndObservationDoNotStartPauseOrRequestAudioFocus()throws Exception{
   String before=web(car).getLastEvaluatedJavascript();observe(car,true,false,true,32000);
   assertEquals(before,web(car).getLastEvaluatedJavascript());assertNotNull(service.getSessionToken());

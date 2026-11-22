@@ -16,6 +16,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  private static final Map<TubeView,State> observations=new WeakHashMap<>();
  private static WeakReference<TubeView> selected=new WeakReference<>(null);
  private static WeakReference<MediaCardService> running=new WeakReference<>(null);
+ private static final MediaCardBinding binding=new MediaCardBinding();
  private MediaSessionCompat session;
  private boolean available,metadataPublished;
  private ThumbnailCache thumbnails;
@@ -43,14 +44,14 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   // Muted feed previews must not take the car video's controls. Keep a paused target.
   if(ready&&!muted&&(current==null||(!current.isCarView()&&view.isCarView()))){selected=new WeakReference<>(view);Diagnostics.event("Media card target selected: "+(view.isCarView()?"car":"phone"));}
   if(selected.get()==view&&running.get()!=null&&(old==null||old.playing!=playing||old.ready!=ready))Diagnostics.event("Media card state reported: playing="+playing+"; ready="+ready+"; muted="+muted);
-  if(selected.get()==view)refresh();
+  if(selected.get()==view){binding.ensure(view.getContext());refresh();}
  }
  static void paused(TubeView view){/* Commands do not constitute observed playback state. */}
  static void clearArtwork(TubeView view){State s=observations.get(view);if(s!=null)observe(view,s.playing,s.muted,s.ready,s.position,null);}
  static TubeView target(){return selected.get();}
  static boolean wantsArtwork(TubeView view){return running.get()!=null&&(selected.get()==null||selected.get()==view||view.isCarView());}
  static boolean retains(TubeView view){return running.get()!=null&&selected.get()==view;}
- static void forget(TubeView view){observations.remove(view);if(selected.get()==view)selected=new WeakReference<>(null);refresh();}
+ static void forget(TubeView view){observations.remove(view);boolean chosen=selected.get()==view;if(chosen)selected=new WeakReference<>(null);refresh();if(chosen)binding.release();}
  private static void refresh(){MediaCardService service=running.get();if(service!=null)service.publish();}
  // This session only controls an already selected video; it has no searchable catalog.
  @android.annotation.SuppressLint("MissingOnPlayFromSearch")
