@@ -50,3 +50,9 @@ or timeout should leave the manual-open fallback and all normal playback intact.
 Validation on 2026-11-22: 134 JVM/Robolectric tests, release build and release lint passed (existing warnings remain). The existing API 36 synthetic controller suite passed 27 scenarios. Native launch fallback is tested on a fixture emulator without Android Auto installed; this can establish rejection/retryability and no delayed media, not successful car launch.
 
 The 3 added native fallback checks passed, including the actual launch button, an unavailable-selection/reconnect flow and no local media. IPTV also checks a UI language change. The Android Auto host is absent in these emulator fallback checks.
+
+The standalone APK uses Gradle dex compression to reduce download size. All 105
+non-signature ZIP payload entries match the uncompressed build byte-for-byte,
+and the signing certificate is unchanged. The compressed debug APK installed as
+an update and passed six additional synthetic media-card/lifecycle scenarios on
+API 36, including decoding, fullscreen coverage, phone closure and no autoplay.
