@@ -14,14 +14,22 @@ try{
  await until(phone,'JSON.parse(Harness.state()).connected');await phone('Harness.viewport(960,540)');await phone("document.querySelector('a').click()");await until(car,"document.querySelector('video')?.currentTime>.2");await until(phone,"JSON.parse(Harness.controls())['Car fullscreen']");
  await car("window.originalVideo=document.querySelector('video');window.originalSource=originalVideo.currentSrc;window.pointerEvents=0;document.addEventListener('pointerdown',()=>pointerEvents++);");
  for(const mode of ['remote','native']){
+  if(mode==='remote')await car(`originalVideo.controls=false;const root=document.querySelector('#player');window.fixtureBar=document.createElement('div');fixtureBar.style.cssText='position:absolute;bottom:10px;left:10px;right:10px;height:48px;background:#234;z-index:20;visibility:hidden';window.fixturePause=document.createElement('button');fixturePause.textContent='Pause / Play';fixturePause.style.cssText='height:48px;width:120px';fixturePause.onclick=()=>originalVideo.paused?originalVideo.play():originalVideo.pause();fixtureBar.append(fixturePause);root.append(fixtureBar);window.fixtureReveal=()=>fixtureBar.style.visibility='visible';root.addEventListener('pointerdown',fixtureReveal);`);
   if(mode==='remote')await phone("Harness.command('fullscreen',0)");else await car('await originalVideo.requestFullscreen()');
   await until(phone,'!!JSON.parse(Harness.overlay()).fit?.visible');
   let buttons=await phone('return JSON.parse(Harness.overlay())');
   for(const b of Object.values(buttons)){assert(b.image);assert.equal(b.width,b.height);assert(b.width>=48);}
   shot(mode+'-shown');console.log('PASS '+mode+': both controls are circular-size image buttons');
   await wait(5500);buttons=await phone('return JSON.parse(Harness.overlay())');assert(!buttons.exit.visible&&!buttons.fit.visible);shot(mode+'-hidden');
-  const pointerCount=await car('return pointerEvents');tap(buttons.fit);await until(phone,'JSON.parse(Harness.overlay()).fit.visible');assert.equal(await car('return MMVideoFit.state().fill'),false);assert.equal(await car('return originalVideo.paused'),false);if(mode==='remote')assert.equal(await car('return pointerEvents'),pointerCount);
-  console.log('PASS '+mode+': five-second hide and first tap reveal without clicking hidden Fit or pausing');
+  const pointerCount=await car('return pointerEvents');tap({x:(buttons.exit.x+buttons.fit.x)/2,y:buttons.exit.y});await until(phone,'JSON.parse(Harness.overlay()).fit.visible');assert.equal(await car('return MMVideoFit.state().fill'),false);if(mode==='remote'){assert.equal(await car('return originalVideo.paused'),false);assert.equal(await car('return pointerEvents'),pointerCount+1);}else if(await car('return originalVideo.paused')){await until(phone,"JSON.parse(Harness.state()).phase==='paused'");await phone("Harness.command('play',0)");await until(car,'!originalVideo.paused');console.log('OBSERVED native player handled center tap as Pause; phone reflected it and explicit Play resumed');}
+  shot(mode+'-one-tap-reveal');console.log('PASS '+mode+': one original gesture reaches player and reveals app controls without hidden Fit activation');
+  if(mode==='remote'){
+   assert.equal(await car('return getComputedStyle(fixtureBar).visibility'),'visible');
+   const point=await car('const r=fixturePause.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,h:innerHeight};');
+   const target={x:buttons.exit.x-26+point.x,y:buttons.exit.y-point.h/2+point.y};
+   tap(target);await until(phone,"JSON.parse(Harness.state()).phase==='paused'");tap(target);await until(phone,"JSON.parse(Harness.state()).phase==='playing'");
+   console.log('PASS YouTube-style sibling controls appear on the same Android tap; Pause works on the next tap without another reveal');
+  }
   tap(buttons.fit);await until(car,'MMVideoFit.state().fill');await until(phone,'JSON.parse(Harness.overlay()).fit.selected');assert((await phone('return JSON.parse(Harness.overlay()).fit.description')).includes('full picture'));
   const frames=await car('return originalVideo.getVideoPlaybackQuality().totalVideoFrames');await wait(5500);assert(await car(`return originalVideo.getVideoPlaybackQuality().totalVideoFrames>${frames}`));assert.equal(await phone('return JSON.parse(Harness.overlay()).fit.visible'),false);
   await phone("Harness.command('fill',0)");await until(car,'!MMVideoFit.state().fill');await until(phone,'!JSON.parse(Harness.overlay()).fit.selected');assert.equal(await phone('return JSON.parse(Harness.overlay()).fit.visible'),false);
@@ -29,6 +37,7 @@ try{
   buttons=await phone('return JSON.parse(Harness.overlay())');tap(buttons.exit);await until(phone,'JSON.parse(Harness.overlay()).exit.visible');assert(await car('return MMVideoFit.state().fullscreen'));
   tap(buttons.exit);await until(car,'!MMVideoFit.state().fullscreen');await until(phone,'!JSON.parse(Harness.overlay()).exit');assert(await car('return originalVideo===document.querySelector("video")&&originalVideo.currentSrc===originalSource&&!originalVideo.paused'));
   console.log('PASS '+mode+': hidden Exit only reveals; second tap exits without stopping playback');
+  if(mode==='remote')await car("document.querySelector('#player').removeEventListener('pointerdown',fixtureReveal);fixtureBar.remove();originalVideo.controls=true;");
  }
  await phone("Harness.command('fullscreen',0)");await until(phone,'!!JSON.parse(Harness.overlay()).exit');await phone("Harness.command('stop',0)");await until(phone,'!JSON.parse(Harness.overlay()).exit');await wait(5500);assert.equal(await phone('return !!JSON.parse(Harness.overlay()).exit'),false);
  assert(await phone("return !document.querySelector('video')&&Harness.muted()==='true'"));console.log('PASS Stop clears overlay timers; phone remains a silent controller');

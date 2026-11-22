@@ -22,7 +22,10 @@ public final class TubeView extends LinearLayout implements CarController.Player
  private final Button back;
  private final android.os.Handler timer=new android.os.Handler(android.os.Looper.getMainLooper());
  private final FullscreenControls fullscreenControls=new FullscreenControls(timer);
- @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){return fullscreenControls!=null&&fullscreenControls.onTouch(event)||super.dispatchTouchEvent(event);}
+ @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){
+  if(fullscreenControls!=null)fullscreenControls.beforeTouch(event);
+  try{return super.dispatchTouchEvent(event);}finally{if(fullscreenControls!=null)fullscreenControls.afterTouch(event);}
+ }
  @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(fullscreenControls!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN)fullscreenControls.onKey();return super.dispatchKeyEvent(event);}
  private boolean active, covered, closed, background, phoneSuppressed, sampleInFlight, visualStatePending;
  private static int nextInstance;

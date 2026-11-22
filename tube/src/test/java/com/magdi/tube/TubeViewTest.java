@@ -21,6 +21,17 @@ public class TubeViewTest {
  private TubeView view;
  @Before public void setup(){activity=Robolectric.buildActivity(Activity.class).setup().get();view=new TubeView(new ContextThemeWrapper(activity,android.R.style.Theme_Material_NoActionBar));}
  @After public void cleanup(){view.close();activity.finish();}
+ @Test public void hiddenOverlayForwardsOriginalGestureBeforeRevealingButtons()throws Exception{
+  activity.setContentView(view);View player=new View(activity);java.util.List<Integer> actions=new java.util.ArrayList<>();
+  java.lang.reflect.Method show=TubeView.class.getDeclaredMethod("showFullscreen",View.class,WebChromeClient.CustomViewCallback.class);show.setAccessible(true);show.invoke(view,player,(WebChromeClient.CustomViewCallback)()->{});
+  View fit=view.findViewWithTag("native-fullscreen-exit-fit"),exit=view.findViewWithTag("native-fullscreen-exit");int[] clicks={0};fit.setOnClickListener(v->clicks[0]++);
+  player.setOnTouchListener((v,event)->{actions.add(event.getActionMasked());assertEquals(View.INVISIBLE,fit.getVisibility());return true;});
+  view.measure(View.MeasureSpec.makeMeasureSpec(960,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(540,View.MeasureSpec.EXACTLY));view.layout(0,0,960,540);
+  shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(5000));
+  android.graphics.Rect r=new android.graphics.Rect(0,0,fit.getWidth(),fit.getHeight());view.offsetDescendantRectToMyCoords(fit,r);
+  for(int action:new int[]{android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP}){android.view.MotionEvent e=android.view.MotionEvent.obtain(100,200,action,r.centerX(),r.centerY(),0);assertTrue(view.dispatchTouchEvent(e));e.recycle();}
+  assertEquals(java.util.Arrays.asList(android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP),actions);assertEquals(0,clicks[0]);assertEquals(View.VISIBLE,fit.getVisibility());assertEquals(View.VISIBLE,exit.getVisibility());
+ }
  @Test public void fullscreenBackRestoresOriginalContentAndInvokesCallbackOnce() throws Exception {
   View original=view.getChildAt(0);int[] calls={0};
   java.lang.reflect.Method show=TubeView.class.getDeclaredMethod("showFullscreen",View.class,WebChromeClient.CustomViewCallback.class);show.setAccessible(true);
