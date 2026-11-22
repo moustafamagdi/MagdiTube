@@ -53,7 +53,7 @@ final class CarController {
   if("stop".equals(action))return stop(expectedEpoch);
   if(expectedRequest!=request||expectedOwner!=owner||!Double.isFinite(value))return false;
   if("retry".equals(action)){if(selection==null)return false;String url=selection.url;phase="error";return select(url,expectedEpoch);}
-  if(!can(action))return false;
+  if(!can(action)||("fill".equals(action)&&value!=0&&value!=1))return false;
   car.commandController(action,value,epoch,request);return true;
  }
  static boolean canStop(){return available()&&(selection!=null||(fresh()&&playback.optBoolean("hasVideo")&&playback.optInt("ready")>0&&!playback.optString("id").isEmpty()));}
@@ -65,6 +65,7 @@ final class CarController {
    case "seek":case "forward":case "rewind":return playback.optBoolean("seekable");
    case "next":case "previous":return playback.optBoolean(action);
    case "fullscreen":return true;
+   case "fill":return playback.optBoolean("fullscreen");
    default:return false;
   }
  }

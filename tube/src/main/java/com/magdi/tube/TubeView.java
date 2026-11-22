@@ -92,6 +92,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
      if(!result.equals("accepted")&&!result.equals("current-loading"))return;
      timer.removeCallbacks(expireObservation);timer.postDelayed(expireObservation,CarController.FRESH_MS);
      state.remove("controller");
+     updateFitControl(control.optBoolean("fill"));
      if(result.equals("current-loading")||control.optBoolean("error")||!control.optBoolean("hasVideo")||control.optInt("ready")==0){clearPlaybackConsumers();return;}
      if(!state.optBoolean("resumeWanted"))pendingResume=false;
      MediaCardService.observe(TubeView.this,state.optBoolean("playing"),state.optBoolean("muted"),state.optInt("ready")>0,state.optLong("time")*1000,ThumbnailCache.Art.parse(state.optJSONObject("artwork")));
@@ -156,7 +157,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(phone){web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);Diagnostics.event("Controller browsing loaded; car authentication not verified");return;}
   if(!active||"about:blank".equals(u)||!u.equals(v.getUrl()))return;
   if(!accountPage){documentReady=true;CarController.ready(TubeView.this);AdAssist.apply(v);
-   try{for(String asset:new String[]{"playback_state.js","media_artwork.js","media_transport.js","car_controller.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
+   try{for(String asset:new String[]{"video_fit.js","playback_state.js","media_artwork.js","media_transport.js","car_controller.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
    VideoSelection loaded=VideoSelection.parse(u);
    if(!selectionToken.isEmpty()&&loaded!=null&&loaded.id.equals(selectedId)&&CarController.accepts(TubeView.this,selectionEpoch,selectionRequest)){nativeMute(false);v.evaluateJavascript("window.__magdiCar&&window.__magdiCar.start("+org.json.JSONObject.quote(selectedId)+","+org.json.JSONObject.quote(selectionToken)+")",null);}
    if(selectionToken.isEmpty())nativeMute(false);
@@ -226,6 +227,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(!carAvailable()||!CarController.accepts(this,epoch,request)||!CarController.can(action))return;
   if("pause".equals(action)||"play".equals(action)||"next".equals(action)||"previous".equals(action)){resumeCommandGeneration++;pendingResume=false;}
   if("fullscreen".equals(action)){toggleControllerFullscreen();return;}
+  if("fill".equals(action)){ownedScript("return c.setFill("+(value==1)+",t,d,id,g);",null);return;}
   ownedScript("return c.command("+org.json.JSONObject.quote(action)+","+value+",t,d,id,g);",null);
  }
  // The JS guard checks ownership when Chromium actually executes, not just when queued.
@@ -256,6 +258,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(!controllerFullscreenRequested&&!controllerFullscreen)return;
   controllerFullscreenRequested=false;boolean restore=controllerFullscreen;controllerFullscreen=false;
   View exit=content.findViewWithTag("controller-fullscreen-exit");if(exit!=null)content.removeView(exit);
+  View fit=content.findViewWithTag("controller-fullscreen-exit-fit");if(fit!=null)content.removeView(fit);
   web.evaluateJavascript("window.__magdiCar?.exitFullscreen()",null);
   if(restore)restoreChildren();Diagnostics.event("Controller fullscreen exited");
  }
@@ -295,10 +298,15 @@ public final class TubeView extends LinearLayout implements CarController.Player
  }
  private void restoreChildren(){for(java.util.Map.Entry<View,Integer> e:hiddenViews.entrySet())e.getKey().setVisibility(e.getValue());hiddenViews.clear();web.setVisibility(VISIBLE);content.requestLayout();schedulePictureRefresh();}
  // Shared visual and touch target for remote and YouTube-native fullscreen.
+ private void updateFitControl(boolean fill){
+  for(String tag:new String[]{"controller-fullscreen-exit-fit","native-fullscreen-exit-fit"}){View target=content.findViewWithTag(tag);if(target instanceof Button){((Button)target).setText(fill?(ar?"الصورة كاملة":"Full picture"):(ar?"بدون حواف":"Fill screen"));target.setContentDescription(fill?(ar?"عرض الصورة كاملة":"Show full picture"):(ar?"ملء الشاشة مع قص الأطراف":"Fill screen (crop edges)"));}}
+ }
  private void addFullscreenExit(FrameLayout parent,String tag,Runnable onExit){
   ImageButton exit=new ImageButton(getContext());exit.setImageResource(R.drawable.ic_fullscreen_close);exit.setContentDescription(ar?"الخروج من ملء الشاشة":"Exit fullscreen");exit.setBackgroundResource(R.drawable.fullscreen_close_background);exit.setPadding(dp(14),dp(14),dp(14),dp(14));exit.setScaleType(ImageView.ScaleType.FIT_CENTER);exit.setElevation(0);exit.setStateListAnimator(null);
   // A 36 dp translucent circle inside a 48 dp touch target; keep the physical left edge in RTL too.
   FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);p.leftMargin=dp(2);parent.addView(exit,p);exit.setTag(tag);exit.setOnClickListener(v->onExit.run());
+  Button fit=button(ar?"بدون حواف":"Fill screen",ar?"ملء الشاشة مع قص الأطراف":"Fill screen (crop edges)");fit.setTextSize(12);fit.setTag(tag+"-fit");FrameLayout.LayoutParams fp=new FrameLayout.LayoutParams(dp(104),dp(48),Gravity.CENTER_VERTICAL|Gravity.RIGHT);fp.rightMargin=dp(2);parent.addView(fit,fp);
+  fit.setOnClickListener(v->{org.json.JSONObject state=CarController.state().optJSONObject("playback");if(state!=null)commandController("fill",state.optBoolean("fill")?0:1,CarController.epoch(),CarController.request());});
  }
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
   if(fullscreen!=null){callback.onCustomViewHidden();return;}hideControllerFullscreen();hideSearch();hideChildren();fullscreenCallback=callback;

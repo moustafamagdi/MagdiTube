@@ -11,6 +11,7 @@
  // the media element in place: reparenting it can detach Chromium's video surface.
  let fullscreenVideo=null,fullscreenStyle=null,fullscreenMarks=[],originalControls;
  function exitFullscreen(){
+  window.MMVideoFit?.inline(false);
   if(!fullscreenStyle&&!fullscreenMarks.length)return true;
   fullscreenStyle?.remove();fullscreenStyle=null;
   if(fullscreenVideo&&originalControls!==undefined){if(originalControls===null)fullscreenVideo.removeAttribute('controls');else fullscreenVideo.setAttribute('controls',originalControls);}
@@ -49,12 +50,13 @@
   document.head.appendChild(fullscreenStyle);window.dispatchEvent(new Event('resize'));
   const r=v.getBoundingClientRect();
   if(r.width<innerWidth-2||r.height<innerHeight-2||!root.contains(document.elementFromPoint(innerWidth/2,innerHeight/2))){exitFullscreen();return false;}
-  return true;
+  window.MMVideoFit?.inline(true);return true;
  }
  window.__magdiCar={
   matches,
   fullscreen(enabled,t,d,id,g){if(!this.guard(t,d,id,g))return false;try{return enabled?enterFullscreen():exitFullscreen();}catch(_){exitFullscreen();return false;}},
   exitFullscreen,
+  setFill(enabled,t,d,id,g){return this.guard(t,d,id,g)&&!!window.MMVideoFit?.set(enabled);},
   guard(t,d,id,g){if(!matches(t,d,id)||g<revision)return false;revision=g;return true;},
   start(id,t){if(!revoked&&!started&&t===documentToken){started=true;wanted={id,token:t};attempt=0;}},
   revoke(){exitFullscreen();revoked=true;wanted=null;window.__magdiPlayback?.stop();},
@@ -69,7 +71,7 @@
    else return false;
    return true;
   },
-  state(){const v=video(),art=identity(),error=!!v?.error,ended=!!v?.ended,paused=!!v?.paused,ready=v?v.readyState:0;return {token:documentToken,document:documentId,id:art?.id||'',hasVideo:!!v,ready,playing:!!v&&!paused&&!ended&&!error,paused,ended,error,buffering:!!v&&!paused&&!ended&&!error&&(waiting||ready<3),replay:!!v&&Number.isFinite(v.duration)&&v.duration>0&&v.seekable.length>0&&v.seekable.start(0)===0,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&!error&&ready>0&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
+  state(){const v=video(),art=identity(),error=!!v?.error,ended=!!v?.ended,paused=!!v?.paused,ready=v?v.readyState:0;return {...(window.MMVideoFit?.state()||{fullscreen:false,fill:false}),token:documentToken,document:documentId,id:art?.id||'',hasVideo:!!v,ready,playing:!!v&&!paused&&!ended&&!error,paused,ended,error,buffering:!!v&&!paused&&!ended&&!error&&(waiting||ready<3),replay:!!v&&Number.isFinite(v.duration)&&v.duration>0&&v.seekable.length>0&&v.seekable.start(0)===0,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&!error&&ready>0&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
  };
  const timer=setInterval(()=>{
   if(!wanted||revoked)return;
