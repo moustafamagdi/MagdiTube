@@ -163,7 +163,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(phone){web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);Diagnostics.event("Controller browsing loaded; car authentication not verified");return;}
   if(!active||"about:blank".equals(u)||!u.equals(v.getUrl()))return;
   if(!accountPage){documentReady=true;CarController.ready(TubeView.this);AdAssist.apply(v);
-   try{for(String asset:new String[]{"video_fit.js","playback_state.js","media_artwork.js","media_transport.js","car_controller.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
+   try{for(String asset:new String[]{"video_fit.js","playback_state.js","media_artwork.js","media_transport.js","car_controller.js","car_audio.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
    VideoSelection loaded=VideoSelection.parse(u);
    if(!selectionToken.isEmpty()&&loaded!=null&&loaded.id.equals(selectedId)&&CarController.accepts(TubeView.this,selectionEpoch,selectionRequest)){nativeMute(false);v.evaluateJavascript("window.__magdiCar&&window.__magdiCar.start("+org.json.JSONObject.quote(selectedId)+","+org.json.JSONObject.quote(selectionToken)+")",null);}
    if(selectionToken.isEmpty())nativeMute(false);

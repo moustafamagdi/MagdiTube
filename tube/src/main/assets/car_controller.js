@@ -54,18 +54,19 @@
  }
  window.__magdiCar={
   matches,
+  audioAllowed:v=>!revoked&&v?.isConnected!==false&&document.querySelector('video')===v,
   fullscreen(enabled,t,d,id,g){if(!this.guard(t,d,id,g))return false;try{return enabled?enterFullscreen():exitFullscreen();}catch(_){exitFullscreen();return false;}},
   exitFullscreen,
   setFill(enabled,t,d,id,g){return this.guard(t,d,id,g)&&!!window.MMVideoFit?.set(enabled);},
   guard(t,d,id,g){if(!matches(t,d,id)||g<revision)return false;revision=g;return true;},
   start(id,t){if(!revoked&&!started&&t===documentToken){started=true;wanted={id,token:t};attempt=0;}},
-  revoke(){exitFullscreen();revoked=true;wanted=null;window.__magdiPlayback?.stop();},
+  revoke(){exitFullscreen();revoked=true;wanted=null;window.__magdiAudio?.stop();window.__magdiPlayback?.stop();},
   cancel(){this.revoke();document.querySelectorAll('video,audio').forEach(v=>{v.pause();v.removeAttribute('src');v.load();});},
   command(action,value,t,d,id,g){
    if(!this.guard(t,d,id,g))return false;
    const v=video();if(!v||v.error||!v.readyState)return false;
    if(action==='pause'){wanted=null;window.__magdiPlayback?.stop();v.pause();}
-   else if(action==='play'){if(v.ended){if(!Number.isFinite(v.duration)||!v.seekable.length||v.seekable.start(0)>0)return false;v.currentTime=0;}v.play().catch(()=>{});}
+   else if(action==='play'){if(v.ended){if(!Number.isFinite(v.duration)||!v.seekable.length||v.seekable.start(0)>0)return false;v.currentTime=0;}window.__magdiAudio?.prepare(v);v.play().catch(()=>{});}
    else if(['seek','forward','rewind'].includes(action)){if(!Number.isFinite(value)||!v.seekable.length)return false;const next=action==='seek'?value:v.currentTime+(action==='forward'?10:-10);v.currentTime=Math.min(v.seekable.end(v.seekable.length-1),Math.max(v.seekable.start(0),next));}
    else if(action==='next'||action==='previous')return window.__magdiTransport?.skip(id,action==='next')==='requested';
    else return false;
@@ -77,7 +78,7 @@
   if(!wanted||revoked)return;
   if(documentToken!==wanted.token||new URL(location.href).searchParams.get('v')!==wanted.id){wanted=null;return;}
   const v=video(),art=identity();
-  if(v&&art?.id===wanted.id&&v.readyState>0){v.muted=false;v.play().catch(()=>{});wanted=null;}
+  if(v&&art?.id===wanted.id&&v.readyState>0){window.__magdiAudio?.prepare(v);v.play().catch(()=>{});wanted=null;}
   else if(++attempt>=120)wanted=null;
  },250);
  addEventListener('pagehide',()=>{clearInterval(timer);window.__magdiCar.revoke();});

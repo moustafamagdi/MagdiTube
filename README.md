@@ -103,3 +103,7 @@ Fill now expands the video and its media wrappers when YouTube fullscreens a pla
 ## Aligned phone controls (0.1.47)
 
 Phone controller buttons now have aligned edges, rounded outlines and consistent gaps. Portrait uses separate playback, navigation and display rows; wide screens use two rows. Rows accommodate wrapped Arabic/English labels and reflow for enlarged text. Disabled controls still follow the actual car state. See [validation and device checks](research/CONTROLLER_LAYOUT_0.1.47.md).
+
+## Car audio and ad defaults (0.1.48)
+
+Ad assistance defaults to enabled unless an explicit setting was saved. Car playback now synchronizes YouTube's mute state with the media element, resolving the stale Unmute prompt without hiding it. Positive media volume is preserved and the phone remains controller-only. See [validation and device checks](research/AUDIO_DEFAULTS_0.1.48.md).
