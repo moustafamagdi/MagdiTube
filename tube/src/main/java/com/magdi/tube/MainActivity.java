@@ -8,4 +8,5 @@ public final class MainActivity extends android.app.Activity {
  protected void onPause(){ if(page!=null)page.pause(); super.onPause(); }
  protected void onResume(){super.onResume();if(page!=null)page.resume();}
  protected void onDestroy(){if(page!=null)page.close();super.onDestroy();}
+ @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)SupportNotice.show(this,null);}
 }
