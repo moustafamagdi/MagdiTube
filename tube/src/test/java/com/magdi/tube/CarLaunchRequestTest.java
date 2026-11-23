@@ -24,4 +24,16 @@ public class CarLaunchRequestTest {
  @Test public void alreadyVisibleHostNeedsNoLaunch(){host.visible=true;request.request();assertEquals("opened",request.status());assertFalse(request.pending());assertNull(driver.events);assertEquals(0,host.starts);}
  @Test public void openedStatusExpiresWhenHostIsCovered(){host.visible=true;request.request();assertEquals("opened",request.status());host.visible=false;assertEquals("idle",request.status());}
  @Test public void unavailableSdkFailsClosed(){request=new CarLaunchRequest(RuntimeEnvironment.getApplication(),TubeService.class,()->{throw new NoClassDefFoundError();},host,()->changes++);request.request();assertEquals("unavailable",request.status());assertFalse(request.pending());}
+ @Test public void lastSelectionDispatchesOnceOnlyAfterHostAndPlayerAreReady(){
+  java.util.concurrent.atomic.AtomicInteger delivered=new java.util.concurrent.atomic.AtomicInteger();
+  request.request(()->{throw new AssertionError("Superseded selection");});
+  java.util.concurrent.atomic.AtomicBoolean ready=new java.util.concurrent.atomic.AtomicBoolean();
+  request.request(()->{if(!ready.get())return false;delivered.incrementAndGet();return true;});
+  driver.events.connected();drain();host.visible=true;
+  org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(300));
+  assertTrue(request.pending());assertEquals(0,delivered.get());
+  ready.set(true);
+  org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(10));
+  assertEquals(1,delivered.get());assertFalse(request.pending());
+ }
 }

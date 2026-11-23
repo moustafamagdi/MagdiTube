@@ -66,7 +66,7 @@ final class PhoneController extends LinearLayout {
  }
  @Override protected void onMeasure(int widthSpec,int heightSpec){arrange(MeasureSpec.getSize(widthSpec));super.onMeasure(widthSpec,heightSpec);}
  void unavailable(){Toast.makeText(getContext(),ar?"مشغّل العربية غير جاهز. حاولنا فتحه؛ اختر الفيديو مجددًا بعد ظهوره.":"Car player is not ready. Opening was requested; select the video again when ready.",Toast.LENGTH_LONG).show();}
- void select(String url,long expected){if(!CarController.select(url,expected)){launch.request();unavailable();}else launch.request();update();}
+ void select(String url,long expected){if(VideoSelection.parse(url)==null)return;if(CarController.select(url,expected)){launch.cancel();launch.request();}else launch.request(()->CarController.select(url,CarController.epoch()));update();}
  private void command(String action,double value,long e,long r,long o){if("open".equals(action)){launch.request();return;}if("stop".equals(action))launch.cancel();if(!CarController.command(action,value,e,r,o)){if(!CarController.available())unavailable();else Toast.makeText(getContext(),ar?"الأمر غير متاح في المشغّل الحالي":"Command unavailable in the current player",Toast.LENGTH_SHORT).show();}update();}
  void update(){updateLaunch();JSONObject s=CarController.state(),p=s.optJSONObject("playback");epoch=s.optLong("epoch");request=s.optLong("request");owner=s.optLong("owner");boolean connected=s.optBoolean("connected"),video=p!=null&&p.optBoolean("hasVideo")&&p.optInt("ready")>0;
   String phase=s.optString("phase");String label;

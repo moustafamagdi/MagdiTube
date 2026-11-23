@@ -27,9 +27,9 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9-]+)?$ ]]
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
-          count=$(jq '[.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk$")))] | length' release.json)
+          count=$(jq '[.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube(-[0-9]+\\.[0-9]+\\.[0-9]+)?\\.apk$")))] | length' release.json)
           [[ "$count" == 1 ]]
-          jq '.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube-[0-9]+\\.[0-9]+\\.[0-9]+\\.apk$")))' release.json > asset.json
+          jq '.assets[] | select(.state == "uploaded" and (.name | test("^MM-Tube(-[0-9]+\\.[0-9]+\\.[0-9]+)?\\.apk$")))' release.json > asset.json
           asset=$(jq -r .name asset.json)
           id=$(jq -r .id asset.json)
           digest=$(jq -r .digest asset.json)

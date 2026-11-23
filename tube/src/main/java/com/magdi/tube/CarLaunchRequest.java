@@ -6,7 +6,7 @@ import android.support.car.Car;
 import android.support.car.CarConnectionCallback;
 import com.google.android.apps.auto.sdk.service.CarFirstPartyManager;
 
-/** Best-effort UI launch only. Never stores a video, starts phone playback or retries on reconnect. */
+/** Best-effort launch with an optional one-shot selection scoped to its readiness deadline. */
 final class CarLaunchRequest {
  static final long TIMEOUT_MS=8000;
  interface Events { void connected(); void disconnected(); }
@@ -17,6 +17,7 @@ final class CarLaunchRequest {
  private final Factory factory;private final Host host;private final Intent intent;private final Runnable changed;
  private Backend backend;private Object attempt;private boolean sent;private String status="idle";
  private Runnable deadline,poll;
+ private java.util.function.BooleanSupplier selection;
  CarLaunchRequest(Context context,Class<?> service,Runnable changed){
   this(context,service,()->new Sdk(context.getApplicationContext()),new Host(){
    public boolean visible(){return CarPlaybackSession.visible();}
@@ -30,13 +31,17 @@ final class CarLaunchRequest {
  }
  String status(){return "opened".equals(status)&&!host.visible()?"idle":status;}
  boolean pending(){return attempt!=null;}
- void request(){
+ void request(){request(null);}
+ void request(java.util.function.BooleanSupplier playback){
+  if(playback!=null)selection=playback;
   if(pending())return;
-  if(host.visible()){status="opened";changed.run();return;}
+  if(selection!=null&&host.visible()&&selection.getAsBoolean())selection=null;
+  if(host.visible()&&selection==null){status="opened";changed.run();return;}
   Object own=new Object();attempt=own;sent=false;status="opening";changed.run();
   deadline=()->finish(own,"timeout");handler.postDelayed(deadline,TIMEOUT_MS);
-  poll=new Runnable(){public void run(){if(attempt!=own)return;if(sent&&host.visible())finish(own,"opened");else handler.postDelayed(this,150);}};
+  poll=new Runnable(){public void run(){if(attempt!=own)return;if(sent&&host.visible()&&(selection==null||selection.getAsBoolean()))finish(own,"opened");else handler.postDelayed(this,150);}};
   handler.post(poll);
+  if(host.visible()){sent=true;return;}
   try{
    if(host.launch(new Intent(intent))){sent=true;Diagnostics.event("Car UI launch requested: existing host");return;}
    backend=factory.create();Backend b=backend;
@@ -48,7 +53,7 @@ final class CarLaunchRequest {
  }
  void cancel(){if(attempt!=null)finish(attempt,"cancelled");}
  private void finish(Object own,String result){
-  if(attempt!=own)return;attempt=null;status=result;
+  if(attempt!=own)return;attempt=null;selection=null;status=result;
   if(deadline!=null)handler.removeCallbacks(deadline);if(poll!=null)handler.removeCallbacks(poll);
   Backend old=backend;backend=null;if(old!=null)try{old.close();}catch(RuntimeException|LinkageError ignored){}
   Diagnostics.event("Car UI launch result="+result);changed.run();
