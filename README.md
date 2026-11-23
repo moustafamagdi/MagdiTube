@@ -30,7 +30,7 @@ Browse YouTube on your phone, then choose and control videos on your Android Aut
 
 The **MM Tube Audio** entry provides controls for existing car playback. If the main app is missing from Android Auto, use MM Auto's setup guide. Availability varies by device and car. YouTube sign-in may not work on every device.
 
-Install updates over your current app to keep its settings. Use video while parked.
+Install updates over your current app to keep its settings.
 
 ## Help and privacy
 
