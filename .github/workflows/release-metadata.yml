@@ -1,11 +1,11 @@
-name: Verify release APK and label for MM Auto
+name: Verify release APK and build metadata
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to verify and label
+        description: Existing release tag to verify
         required: true
         type: string
 permissions:
@@ -15,13 +15,11 @@ jobs:
     if: github.repository == 'moustafamagdi/MagdiTube'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - name: Verify signed APK before publishing its versionCode label
+      - name: Verify signed APK and its published build number
         shell: bash
         run: |
           set -euo pipefail
@@ -46,5 +44,10 @@ jobs:
           grep -q "^package: name='com.magdi.tube' " badging.txt
           code=$(sed -n "s/^package: .*versionCode='\([0-9]*\)'.*/\1/p" badging.txt)
           [[ "$code" =~ ^[1-9][0-9]*$ ]]
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$id" -f "label=versionCode=$code" --jq '{name,label,digest}'
+          if [[ "$asset" == "MM-Tube.apk" ]] && jq -e '(.label // "") == ""' asset.json >/dev/null; then
+            mapfile -t markers < <(jq -r '.body // ""' release.json | tr -d '\r' | grep '^<!-- mm-version-code: ' || true)
+            [[ "${#markers[@]}" == 1 && "${markers[0]}" == "<!-- mm-version-code: $code -->" ]]
+          else
+            [[ "$(jq -r .label asset.json)" == "versionCode=$code" ]]
+          fi
           printf 'Verified %s: versionCode=%s, SHA-256=%s\n' "$asset" "$code" "$actual" >> "$GITHUB_STEP_SUMMARY"
