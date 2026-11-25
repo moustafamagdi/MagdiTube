@@ -43,7 +43,7 @@
  };
  // Mobile YouTube portals can be inserted outside the native fullscreen subtree.
  // Move only popup containers (never the player/video), and restore their exact location on exit.
- const portals='ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container';
+ const portals='bottom-sheet-container,ytm-menu-popup-renderer,ytm-bottom-sheet-renderer[role="dialog"],ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog';
  const moved=new Map();let menuObserver=null,menuRoot=null;
  function restoreMenus(){menuObserver?.disconnect();menuObserver=null;for(const [el,place] of moved){if(place.parent.isConnected)place.parent.insertBefore(el,place.next?.parentNode===place.parent?place.next:null);}moved.clear();menuRoot=null;}
  function syncMenus(){const root=document.fullscreenElement;if(root!==menuRoot)restoreMenus();if(!root||root.tagName==='VIDEO')return;menuRoot=root;for(const el of document.querySelectorAll(portals)){if(root.contains(el)||el.contains(root)||!el.isConnected)continue;moved.set(el,{parent:el.parentNode,next:el.nextSibling});root.appendChild(el);}if(!menuObserver){menuObserver=new MutationObserver(syncMenus);menuObserver.observe(document.body,{childList:true,subtree:true});}}

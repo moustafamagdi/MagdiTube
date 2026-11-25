@@ -1,9 +1,11 @@
 {
   "private": true,
   "scripts": {
-    "test:portals": "node fullscreen-portals.cjs"
+    "test:portals": "node fullscreen-portals.cjs",
+    "test:fullscreen-css": "node fullscreen-css.cjs"
   },
   "devDependencies": {
-    "jsdom": "26.1.0"
+    "jsdom": "26.1.0",
+    "playwright-core": "1.65.1"
   }
 }

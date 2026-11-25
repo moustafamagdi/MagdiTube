@@ -3,9 +3,11 @@ android {
  namespace 'com.magdi.tube'
  compileSdk 36
  buildToolsVersion '36.0.0'
- defaultConfig { applicationId 'com.magdi.tube'; minSdk 30; targetSdk 36; versionCode 53; versionName '0.1.52' }
+ defaultConfig { applicationId 'com.magdi.tube'; minSdk 30; targetSdk 36; versionCode 54; versionName '0.1.53' }
  signingConfigs { personal { storeFile rootProject.file(System.getenv('MAGDI_KEYSTORE') ?: 'signing/magdi-release.p12'); storePassword System.getenv('MAGDI_STORE_PASSWORD'); keyAlias 'magdi-mirror'; keyPassword System.getenv('MAGDI_STORE_PASSWORD') } }
  buildTypes { release { signingConfig signingConfigs.personal } }
+ buildFeatures { buildConfig = true }
+ defaultConfig { buildConfigField 'boolean', 'LOCAL_WEBVIEW_INSPECTION', providers.gradleProperty('localWebViewInspection').orElse('false').get() == 'true' ? 'true' : 'false' }
  // Smaller standalone APK downloads; Android extracts the unchanged dex at install.
  packaging { dex { useLegacyPackaging = true } }
  testOptions { unitTests.includeAndroidResources = true }

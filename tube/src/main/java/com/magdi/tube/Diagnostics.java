@@ -14,7 +14,7 @@ public final class Diagnostics extends Application {
  private static final Semaphore slots=new Semaphore(128);
  private static final java.util.concurrent.atomic.AtomicInteger omitted=new java.util.concurrent.atomic.AtomicInteger();
  private static final SimpleDateFormat timestamp=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS",Locale.US);
- public void onCreate(){super.onCreate();app=this;SupportReporter.init(this);io.execute(()->{try{store=new DiagnosticStore(getFilesDir());store.migrateLegacy(getFilesDir(),System.currentTimeMillis());store.start("App",System.currentTimeMillis());}catch(IOException e){android.util.Log.e("MagdiTube","Cannot initialize diagnostic sessions");}});event("Process started; version="+version(getPackageName()));InstallSetup.observe(this,"process start");}
+ public void onCreate(){super.onCreate();if(BuildConfig.LOCAL_WEBVIEW_INSPECTION)android.webkit.WebView.setWebContentsDebuggingEnabled(true);app=this;SupportReporter.init(this);io.execute(()->{try{store=new DiagnosticStore(getFilesDir());store.migrateLegacy(getFilesDir(),System.currentTimeMillis());store.start("App",System.currentTimeMillis());}catch(IOException e){android.util.Log.e("MagdiTube","Cannot initialize diagnostic sessions");}});event("Process started; version="+version(getPackageName()));InstallSetup.observe(this,"process start");}
  static void event(String message){
   final long when=System.currentTimeMillis();SupportReporter.record(message,when);if(!slots.tryAcquire()){omitted.incrementAndGet();return;}
   io.execute(()->{try{android.util.Log.i("MagdiTube",message);int skipped=omitted.getAndSet(0);String line=timestamp.format(new Date(when))+" "+message+"\n";

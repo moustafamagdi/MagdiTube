@@ -10,6 +10,7 @@
  // Promote only the selected player (including its controls), never unrelated containers. Keep
  // the media element in place: reparenting it can detach Chromium's video surface.
  let fullscreenVideo=null,fullscreenStyle=null,fullscreenMarks=[],originalControls;
+ const fullscreenPopups='bottom-sheet-container,ytm-menu-popup-renderer,ytm-bottom-sheet-renderer[role="dialog"],ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog';
  function exitFullscreen(){
   window.MMVideoFit?.inline(false);
   if(!fullscreenStyle&&!fullscreenMarks.length)return true;
@@ -40,7 +41,7 @@
   fullscreenStyle=document.createElement('style');fullscreenStyle.id='magdi-car-fullscreen';
   fullscreenStyle.textContent=`
    html,body{overflow:hidden!important;background:#000!important}
-   body *:not([data-mm-fullscreen]):not([data-mm-fullscreen="player"] *){visibility:hidden!important}
+   body *:not([data-mm-fullscreen]):not([data-mm-fullscreen="player"] *):not(:is(${fullscreenPopups})):not(:is(${fullscreenPopups}) *){visibility:hidden!important}
    [data-mm-fullscreen]{visibility:visible!important;opacity:1!important;transform:none!important;translate:none!important;rotate:none!important;scale:none!important;filter:none!important;backdrop-filter:none!important;perspective:none!important;contain:none!important;content-visibility:visible!important;clip:auto!important;clip-path:none!important;mask:none!important;overflow:visible!important;isolation:auto!important;will-change:auto!important}
    [data-mm-fullscreen="path"]{display:block!important;position:static!important;z-index:auto!important;width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important}
    [data-mm-fullscreen="player"]{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important;z-index:1000!important;background:#000!important}
@@ -48,9 +49,9 @@
    [data-mm-fullscreen="video"]{display:block!important;position:${root===v?'fixed':'absolute'}!important;inset:0!important;width:100vw!important;height:100vh!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important;object-fit:contain!important;z-index:${root===v?'2147483647':'auto'}!important;background:#000!important}
   `;
   fullscreenStyle.textContent+=`
-   :is(ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog), :is(ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog) *{visibility:visible!important}
-   :is(ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog){z-index:2147483647!important}
-   body *:has(:is(ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog)):not([data-mm-fullscreen]){isolation:auto!important;transform:none!important;contain:none!important;overflow:visible!important;z-index:2147483647!important}
+   :is(${fullscreenPopups}), :is(${fullscreenPopups}) *{visibility:visible!important}
+   :is(${fullscreenPopups}){z-index:2147483647!important}
+   body *:has(:is(${fullscreenPopups})):not([data-mm-fullscreen]){isolation:auto!important;transform:none!important;contain:none!important;overflow:visible!important;z-index:2147483647!important}
   `;
   document.head.appendChild(fullscreenStyle);window.dispatchEvent(new Event('resize'));
   const r=v.getBoundingClientRect();
