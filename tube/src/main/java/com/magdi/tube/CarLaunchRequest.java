@@ -16,7 +16,7 @@ final class CarLaunchRequest {
  private final Handler handler=new Handler(Looper.getMainLooper());
  private final Factory factory;private final Host host;private final Intent intent;private final Runnable changed;
  private Backend backend;private Object attempt;private boolean sent;private String status="idle";
- private Runnable deadline,poll;
+ private Runnable deadline,poll,fallback;
  private java.util.function.BooleanSupplier selection;
  CarLaunchRequest(Context context,Class<?> service,Runnable changed){
   this(context,service,()->new Sdk(context.getApplicationContext()),new Host(){
@@ -43,7 +43,13 @@ final class CarLaunchRequest {
   handler.post(poll);
   if(host.visible()){sent=true;return;}
   try{
-   if(host.launch(new Intent(intent))){sent=true;Diagnostics.event("Car UI launch requested: existing host");return;}
+   if(host.launch(new Intent(intent))){sent=true;Diagnostics.event("Car UI launch requested: existing host");fallback=()->{if(attempt==own&&!host.visible()){sent=false;connectBackend(own);}};handler.postDelayed(fallback,1200);return;}
+   connectBackend(own);
+  }catch(SecurityException e){finish(own,"denied");}catch(RuntimeException|LinkageError e){finish(own,"unavailable");}
+ }
+ private void connectBackend(Object own){
+  if(attempt!=own)return;
+  try{
    backend=factory.create();Backend b=backend;
    b.connect(new Events(){
     public void connected(){handler.post(()->{if(attempt!=own||backend!=b||sent)return;try{b.launch(new Intent(intent));sent=true;Diagnostics.event("Car UI launch requested: SDK");}catch(SecurityException e){finish(own,"denied");}catch(Exception|LinkageError e){finish(own,"unavailable");}});}
@@ -54,7 +60,7 @@ final class CarLaunchRequest {
  void cancel(){if(attempt!=null)finish(attempt,"cancelled");}
  private void finish(Object own,String result){
   if(attempt!=own)return;attempt=null;selection=null;status=result;
-  if(deadline!=null)handler.removeCallbacks(deadline);if(poll!=null)handler.removeCallbacks(poll);
+  if(fallback!=null)handler.removeCallbacks(fallback);if(deadline!=null)handler.removeCallbacks(deadline);if(poll!=null)handler.removeCallbacks(poll);
   Backend old=backend;backend=null;if(old!=null)try{old.close();}catch(RuntimeException|LinkageError ignored){}
   Diagnostics.event("Car UI launch result="+result);changed.run();
  }

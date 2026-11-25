@@ -49,13 +49,5 @@ final class InstallSetup {
    default:return ar?"تعذّر بدء التثبيت؛ صدّر اللوج":"Unable to start installation; export the log";
   }
  }
- static Intent intent(Uri uri){Intent i=new Intent(Intent.ACTION_INSTALL_PACKAGE).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME,"com.android.vending").putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE,true).putExtra("installerPackageName","com.android.vending").putExtra(Intent.EXTRA_RETURN_RESULT,true);i.setClipData(ClipData.newRawUri("MM Tube APK",uri));return i;}
- static ComponentName systemInstaller(Context c,Intent intent){
-  PackageManager pm=c.getPackageManager();ResolveInfo preferred=pm.resolveActivity(intent,PackageManager.MATCH_DEFAULT_ONLY);
-  for(ResolveInfo r:pm.queryIntentActivities(intent,PackageManager.MATCH_DEFAULT_ONLY))if(isSystem(r)&&preferred!=null&&preferred.activityInfo!=null&&r.activityInfo.packageName.equals(preferred.activityInfo.packageName)&&r.activityInfo.name.equals(preferred.activityInfo.name))return new ComponentName(r.activityInfo.packageName,r.activityInfo.name);
-  for(ResolveInfo r:pm.queryIntentActivities(intent,PackageManager.MATCH_DEFAULT_ONLY))if(isSystem(r))return new ComponentName(r.activityInfo.packageName,r.activityInfo.name);
-  return null;
- }
- private static boolean isSystem(ResolveInfo r){return r!=null&&r.activityInfo!=null&&r.activityInfo.exported&&(r.activityInfo.applicationInfo.flags&(ApplicationInfo.FLAG_SYSTEM|ApplicationInfo.FLAG_UPDATED_SYSTEM_APP))!=0;}
  private InstallSetup(){}
 }

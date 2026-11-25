@@ -37,13 +37,5 @@ public class InstallSetupTest {
   assertEquals("REINSTALL_OBSERVED_METADATA_MISMATCH",InstallSetup.outcome(original,original,true));
   assertEquals("UNVERIFIED_METADATA_UNAVAILABLE",InstallSetup.outcome(original,new InstallSetup.Snapshot(null,null,0,"SecurityException"),true));
  }
- @Test public void selfInstallUsesReadableContentUriAndSystemConfirmation(){
-  Uri uri=Uri.parse("content://com.magdi.tube.reports/installer/Magdi-Tube.apk");Intent intent=InstallSetup.intent(uri);
-  assertEquals(Intent.ACTION_INSTALL_PACKAGE,intent.getAction());assertEquals(uri,intent.getData());
-  assertEquals(uri,intent.getClipData().getItemAt(0).getUri());
-  assertTrue((intent.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0);
-  assertEquals(0,intent.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-  assertTrue(intent.getBooleanExtra(Intent.EXTRA_RETURN_RESULT,false));
-  assertEquals("com.android.vending",intent.getStringExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME));
- }
+ 
 }

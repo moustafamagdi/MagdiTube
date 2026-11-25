@@ -38,8 +38,8 @@ final class PhoneController extends LinearLayout {
   b.setGravity(android.view.Gravity.CENTER);b.setMinimumHeight(dp(48));b.setMinHeight(dp(48));
   b.setPadding(dp(6),dp(8),dp(6),dp(8));b.setTextColor(Color.WHITE);b.setElevation(0);b.setStateListAnimator(null);
   android.graphics.drawable.GradientDrawable shape=new android.graphics.drawable.GradientDrawable();
-  shape.setColor(action.equals("play")||action.equals("pause")?0xff176d66:0xff1b2a3c);
-  shape.setCornerRadius(dp(10));shape.setStroke(dp(1),0xff40536b);
+  shape.setColor(action.equals("open")?0xff285ca0:action.equals("play")||action.equals("pause")?0xff176d66:0xff1b2a3c);
+  shape.setCornerRadius(dp(10));shape.setStroke(dp(1),action.equals("open")?0xffa3ccff:0xff40536b);
   b.setBackgroundTintList(null);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33ffffff),shape,null));
  }
  private void arrange(int width){

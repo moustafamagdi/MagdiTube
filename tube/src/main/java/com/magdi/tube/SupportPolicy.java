@@ -9,6 +9,8 @@ final class SupportPolicy {
   if(m.matches())return o.put("kind","media").put("state",m.group(2)).put("time",bounded(m.group(3))).put("ready",bounded(m.group(4))).put("frames",bounded(m.group(5))).put("code",bounded(m.group(7)));
   if(s.startsWith("Playback source=car ")){int start=s.indexOf('{');if(start<0)return null;JSONObject j=new JSONObject(s.substring(start));o.put("kind","media").put("state",j.optBoolean("playing")?"playing":"pause");for(String k:new String[]{"time","ready","sampleDelayMs","callbackMs","appJavaHeapMiB"})if(j.has(k))o.put(k,bounded(j.optString(k)));JSONObject p=j.optJSONObject("performance");if(p!=null){o.put("frames",bounded(p.optString("totalFrames")));o.put("dropped",bounded(p.optString("droppedFrames")));}return o;}
   if(s.startsWith("Process started; version="))return o.put("kind","app-start");
+  if(s.matches("Car UI launch result=(opened|timeout|denied|unavailable|cancelled)"))return o.put("kind","car-launch").put("state",s.substring(s.indexOf('=')+1));
+  if(s.equals("Car UI launch requested: existing host")||s.equals("Car UI launch requested: SDK"))return o.put("kind","car-launch").put("state","requested").put("method",s.endsWith("SDK")?"sdk":"host");
   if(s.equalsIgnoreCase("Car view created")||s.equals("Car playback session created"))return o.put("kind","car-open");
   if(s.equals("Controller disconnected; pending requests cancelled"))return o.put("kind","car-disconnected");
   if(s.equals("Media card browser accepted"))return o.put("kind","audio-browser");

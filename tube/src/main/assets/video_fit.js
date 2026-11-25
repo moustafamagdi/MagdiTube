@@ -26,9 +26,9 @@
   patch(v,{'object-fit':'cover','object-position':'50% 50%'});
   if(!inline&&root&&root!==v){
    const box={inset:'0px',width:'100%',height:'100%','min-width':'0px','min-height':'0px','max-width':'none','max-height':'none',margin:'0px',padding:'0px',border:'0px','box-sizing':'border-box','aspect-ratio':'auto',transform:'none',translate:'none',rotate:'none',scale:'none'};
-   patch(root,{...box,position:'fixed',width:'100vw',height:'100vh',overflow:'hidden'});
+   patch(root,{...box,position:'fixed',width:'100vw',height:'100vh',overflow:'visible'});
    for(const el of path)patch(el,{...box,display:'block',position:'absolute',filter:'none','backdrop-filter':'none',perspective:'none',contain:'none','content-visibility':'visible',clip:'auto','clip-path':'none',mask:'none',overflow:'visible'});
-   patch(v,{...box,position:'absolute'});
+   patch(v,{...box,position:'absolute','z-index':'0'});
   }
   if(!observer){
    observer=new MutationObserver(apply);
@@ -41,7 +41,14 @@
   state(){apply();return {fullscreen:fullscreen(video()),fill:fill&&fullscreen(video())};},
   reset(){inline=false;fill=false;restore();}
  };
- document.addEventListener('fullscreenchange',()=>{apply();window.dispatchEvent(new Event('mmvideofit'));});
+ // Mobile YouTube portals can be inserted outside the native fullscreen subtree.
+ // Move only popup containers (never the player/video), and restore their exact location on exit.
+ const portals='ytm-menu-popup-renderer,ytm-bottom-sheet-renderer,ytm-player-settings,ytm-popup-container';
+ const moved=new Map();let menuObserver=null,menuRoot=null;
+ function restoreMenus(){menuObserver?.disconnect();menuObserver=null;for(const [el,place] of moved){if(place.parent.isConnected)place.parent.insertBefore(el,place.next?.parentNode===place.parent?place.next:null);}moved.clear();menuRoot=null;}
+ function syncMenus(){const root=document.fullscreenElement;if(root!==menuRoot)restoreMenus();if(!root||root.tagName==='VIDEO')return;menuRoot=root;for(const el of document.querySelectorAll(portals)){if(root.contains(el)||el.contains(root)||!el.isConnected)continue;moved.set(el,{parent:el.parentNode,next:el.nextSibling});root.appendChild(el);}if(!menuObserver){menuObserver=new MutationObserver(syncMenus);menuObserver.observe(document.body,{childList:true,subtree:true});}}
+ document.addEventListener('fullscreenchange',()=>{apply();syncMenus();window.dispatchEvent(new Event('mmvideofit'));});
+ window.addEventListener('pagehide',restoreMenus);
  window.addEventListener('resize',apply);
  window.addEventListener('pagehide',()=>window.MMVideoFit.reset());
 })();

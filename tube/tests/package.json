@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "test:portals": "node fullscreen-portals.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
