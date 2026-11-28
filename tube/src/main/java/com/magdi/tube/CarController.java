@@ -82,7 +82,7 @@ final class CarController {
   try{next=awaiting?new JSONObject().put("token",state.optString("token")).put("document",state.optString("document")):new JSONObject(state.toString());}
   catch(org.json.JSONException ignored){return "invalid-report";}
   if(!next.optString("document").equals(playback.optString("document"))||!next.optString("id").equals(playback.optString("id")))owner++;
-  playback=next;lastReport=android.os.SystemClock.elapsedRealtime();
+  CarUiDiagnostics.player(next);playback=next;lastReport=android.os.SystemClock.elapsedRealtime();
   if(awaiting){phase=state.optBoolean("error")?"error":"loading";return "current-loading";}
   if(selection!=null)selectionAcknowledged=true;
   if(state.optBoolean("error"))phase="error";

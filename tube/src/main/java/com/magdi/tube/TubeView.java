@@ -62,11 +62,13 @@ public final class TubeView extends LinearLayout implements CarController.Player
  @Override public void onWindowFocusChanged(boolean focused){
   if(!focused&&web!=null&&fullscreen!=null&&background)coverPlayback();
   super.onWindowFocusChanged(focused);
+  if(!phone)CarUiDiagnostics.event(focused?"focus-gained":"focus-lost");
   if(focused&&web!=null){schedulePictureRefresh();if(fullscreen!=null)scheduleFullscreenReturn();}
  }
  @Override protected void onWindowVisibilityChanged(int visibility){
   if(visibility!=VISIBLE&&web!=null&&fullscreen!=null&&background)coverPlayback();
   super.onWindowVisibilityChanged(visibility);
+  if(!phone)CarUiDiagnostics.event(visibility==VISIBLE?"window-visible":"window-hidden");
   if(visibility==VISIBLE&&web!=null&&fullscreen!=null)scheduleFullscreenReturn();
  }
  @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(web!=null)schedulePictureRefresh();}

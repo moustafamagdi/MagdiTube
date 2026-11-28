@@ -83,9 +83,9 @@ final class PhoneController extends LinearLayout {
  private void updateLaunch(){openCar.setEnabled(!launch.pending());String text;
   switch(launch.status()){
    case "opening":text=ar?"جارٍ طلب فتح شاشة العربية…":"Requesting car screen…";break;
-   case "opened":text=ar?"واجهة العربية مفتوحة.":"Car screen is open.";break;
+   case "opened":text=ar?"التطبيق يبلغ أن واجهته مفتوحة. لو الكاميرا ظاهرة، ارجع لشاشة Android Auto.":"The app reports its window open. If the camera is showing, return to Android Auto.";break;
    case "denied":text=ar?"Android Auto لم يسمح بالفتح. افتح MM Tube من شاشة العربية.":"Android Auto denied opening. Open MM Tube on the car.";break;
-   case "timeout":case "unavailable":text=ar?"تعذر تأكيد فتح الواجهة. وصّل Android Auto وافتح MM Tube من شاشة العربية.":"Could not confirm opening. Connect Android Auto and open MM Tube on the car.";break;
+   case "timeout":case "unavailable":text=ar?"لم نتمكن من تأكيد الظهور. لو الكاميرا ظاهرة، اقفلها وارجع لـAndroid Auto ثم حاول تاني.":"Could not confirm visibility. If the camera is showing, close it, return to Android Auto and try again.";break;
    default:text="";
   }launchStatus.setText(text);launchStatus.setVisibility(text.isEmpty()?GONE:VISIBLE);
  }

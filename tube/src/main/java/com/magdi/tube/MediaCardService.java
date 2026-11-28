@@ -18,6 +18,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
  private static WeakReference<MediaCardService> running=new WeakReference<>(null);
  private static final MediaCardBinding binding=new MediaCardBinding();
  private MediaSessionCompat session;
+ private int diagnosticPlayback=Integer.MIN_VALUE;
  private boolean available,metadataPublished;
  private ThumbnailCache thumbnails;
  private String requestedArtwork="",publishedArtwork="";
@@ -65,7 +66,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
    public void onSkipToPrevious(){skip(false);}
    public void onPlayFromMediaId(String id,Bundle extras){if(CURRENT.equals(id))command(true);}
   });
-  setSessionToken(session.getSessionToken());session.setActive(true);publish();Diagnostics.event("Media card service connected; no additional audio focus requested");
+  setSessionToken(session.getSessionToken());session.setActive(true);Diagnostics.event("Media card observation=session-active");publish();Diagnostics.event("Media card service connected; no additional audio focus requested");
  }
  private boolean ar(){return getResources().getConfiguration().getLocales().get(0).getLanguage().equals("ar");}
  @Override public BrowserRoot onGetRoot(String pkg,int uid,Bundle hints){
@@ -93,6 +94,7 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   long position=now?state.position:0,expected=lastPosition+(lastPlaybackState==PlaybackStateCompat.STATE_PLAYING?elapsed-statePublishedAt:0);
   // Android extrapolates progress between updates. Publish transitions/seeks immediately.
   if(actions!=lastActions||playback!=lastPlaybackState||lastStateTarget.get()!=selected.get()||Math.abs(position-expected)>2500||elapsed-statePublishedAt>=10000){
+   if(diagnosticPlayback!=playback){diagnosticPlayback=playback;String diagnosticState=playback==PlaybackStateCompat.STATE_PLAYING?"playing":playback==PlaybackStateCompat.STATE_PAUSED?"paused":playback==PlaybackStateCompat.STATE_BUFFERING?"buffering":playback==PlaybackStateCompat.STATE_STOPPED?"stopped":playback==PlaybackStateCompat.STATE_ERROR?"error":"none";Diagnostics.event("Media card observation="+diagnosticState);}
    session.setPlaybackState(new PlaybackStateCompat.Builder().setActions(actions).setState(playback,position,now&&state.playing?1f:0f).build());
    lastActions=actions;lastPlaybackState=playback;lastPosition=position;statePublishedAt=elapsed;lastStateTarget=new WeakReference<>(selected.get());
   }
@@ -123,5 +125,5 @@ public final class MediaCardService extends MediaBrowserServiceCompat {
   if(getSystemService(android.media.AudioManager.class).getMode()!=android.media.AudioManager.MODE_NORMAL)return;
   CarController.command(next?"next":"previous",0,state.epoch,state.request,state.owner);
  }
- @Override public void onDestroy(){if(running.get()==this)running=new WeakReference<>(null);artworkGeneration++;if(thumbnails!=null)thumbnails.close();if(session!=null){session.setActive(false);session.release();session=null;}Diagnostics.event("Media card service disconnected");super.onDestroy();}
+ @Override public void onDestroy(){if(running.get()==this)running=new WeakReference<>(null);artworkGeneration++;if(thumbnails!=null)thumbnails.close();if(session!=null){session.setActive(false);Diagnostics.event("Media card observation=session-inactive");session.release();session=null;}Diagnostics.event("Media card service disconnected");super.onDestroy();}
 }

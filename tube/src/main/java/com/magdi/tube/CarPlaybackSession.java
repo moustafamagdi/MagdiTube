@@ -12,6 +12,7 @@ final class CarPlaybackSession {
  private static Object host,connection;
  private static boolean visible;
  private static boolean disconnectedPage;
+ static int observationFlags(){return (connected()?1:0)|(visible()?2:0)|(page!=null&&page.hasWindowFocus()?4:0)|(page!=null&&page.getWindowVisibility()==android.view.View.VISIBLE?8:0)|(page!=null&&page.isAttachedToWindow()?16:0);}
  static boolean visible(){return connected()&&host!=null&&visible;}
  static void visibility(Object token,boolean value){if(host==token)visible=value;}
  static boolean show(android.content.Intent intent){if(!connected()||!(host instanceof TubeCarActivity))return false;((TubeCarActivity)host).startCarActivity(intent);return true;}
@@ -34,7 +35,7 @@ final class CarPlaybackSession {
  }
  static boolean connected(){return connection!=null;}
  static void connectionAvailable(Object service){if(connection!=null&&connection!=service&&page!=null){page.pause();disconnectedPage=true;}if(connection!=service)visible=false;connection=service;}
- static void connectionLost(Object service){if(connection!=service)return;connection=null;visible=false;disconnectedPage=true;if(page!=null)page.pause();Diagnostics.event("Car service disconnected; playback cancelled");}
+ static void connectionLost(Object service){if(connection!=service)return;connection=null;visible=false;CarUiDiagnostics.reset();disconnectedPage=true;if(page!=null)page.pause();Diagnostics.event("Car service disconnected; playback cancelled");}
  static boolean isHost(Object token){return host==token;}
  static void detach(Object token){
   if(host!=token||page==null)return;

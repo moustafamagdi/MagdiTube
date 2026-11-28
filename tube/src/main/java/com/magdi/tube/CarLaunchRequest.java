@@ -33,10 +33,11 @@ final class CarLaunchRequest {
  boolean pending(){return attempt!=null;}
  void request(){request(null);}
  void request(java.util.function.BooleanSupplier playback){
+  CarUiDiagnostics.event("launch-tap");
   if(playback!=null)selection=playback;
-  if(pending())return;
+  if(pending()){CarUiDiagnostics.event("launch-pending");return;}
   if(selection!=null&&host.visible()&&selection.getAsBoolean())selection=null;
-  if(host.visible()&&selection==null){status="opened";changed.run();return;}
+  if(host.visible()&&selection==null){CarUiDiagnostics.event("already-visible");status="opened";changed.run();return;}
   Object own=new Object();attempt=own;sent=false;status="opening";changed.run();
   deadline=()->finish(own,"timeout");handler.postDelayed(deadline,TIMEOUT_MS);
   poll=new Runnable(){public void run(){if(attempt!=own)return;if(sent&&host.visible()&&(selection==null||selection.getAsBoolean()))finish(own,"opened");else handler.postDelayed(this,150);}};
