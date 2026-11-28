@@ -5,7 +5,7 @@ import org.json.JSONObject;
 /** Once per observed car video. Never re-enter after a manual fullscreen choice. */
 final class StartFullscreen {
  private String handled="";
- static boolean enabled(Context c){return c.getSharedPreferences("tube",0).getBoolean("startFullscreen",false);}
+ static boolean enabled(Context c){return c.getSharedPreferences("tube",0).getBoolean("startFullscreen",true);}
  static void setEnabled(Context c,boolean enabled){c.getSharedPreferences("tube",0).edit().putBoolean("startFullscreen",enabled).apply();}
  private String key(JSONObject state){if(state==null||state.optString("document").isEmpty()||state.optString("id").isEmpty())return "";return state.optString("token")+"/"+state.optString("document")+"/"+state.optString("id");}
  void manual(JSONObject state){String key=key(state);if(!key.isEmpty())handled=key;}
