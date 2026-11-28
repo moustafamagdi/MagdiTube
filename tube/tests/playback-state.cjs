@@ -16,3 +16,12 @@ console.log('Suppressed phone blocks autoplay; releasing suppression does not re
 t=setup();const initialQueries=t.queries();for(let i=0;i<1000;i++)t.mutate();assert.equal(t.queries(),initialQueries);
 t.v.isConnected=false;t.mutate();assert.equal(t.queries(),initialQueries+1);
 console.log('Connected video avoids repeated DOM searches during 1000 unrelated mutations.');
+
+(async()=>{
+ t=setup();t.api.interrupt(true);t.v.paused=true;t.handlers.pause();assert.equal(t.api.resume(),'no-resume');t.api.interrupt(false);assert.equal(t.api.resume(),'resume-requested');await Promise.resolve();
+ t=setup();t.v.paused=true;t.handlers.pause();assert.equal(t.api.interrupt(true),true);t.api.interrupt(false);assert.equal(t.api.resume(),'resume-requested');
+ t=setup();t.docHandlers.pointerdown();t.v.paused=true;t.handlers.pause();assert.equal(t.api.interrupt(true),false);t.api.interrupt(false);assert.equal(t.api.resume(),'no-resume');
+ t=setup();t.api.interrupt(true);t.api.stop();t.v.paused=true;t.handlers.pause();t.api.interrupt(false);assert.equal(t.api.resume(),'no-resume');
+ t=setup();t.api.interrupt(true);t.v.paused=true;t.handlers.pause();t.api.interrupt(false);let requests=0;t.v.play=()=>{requests++;return requests===1?Promise.reject(Error('focus busy')):Promise.resolve();};assert.equal(t.api.resume(),'resume-requested');await new Promise(r=>setImmediate(r));assert.equal(t.api.resume(),'resume-requested');assert.equal(requests,2);
+ console.log('Call tests passed: early/late mode notice, no resume during call, manual pause/stop, rejected play retry.');
+})().catch(e=>{console.error(e);process.exitCode=1});
