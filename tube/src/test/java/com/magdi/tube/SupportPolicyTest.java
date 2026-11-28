@@ -9,4 +9,17 @@ public class SupportPolicyTest {
  @Test public void controllerReasonsClosedVocabulary(){assertNotNull(SupportPolicy.event("Controller observation=accepted",100));assertNull(SupportPolicy.event("Controller observation=private-token",100));}
  @Test public void networkErrorHasNoExceptionMessage(){assertNotNull(SupportPolicy.event("Stream connection error=UnknownHostException",100));assertNull(SupportPolicy.event("Stream connection error=UnknownHostException: secret.example",100));}
  @Test public void malformedSampleIgnored(){assertNull(SupportPolicy.event("Playback source=car {bad}",100));}
+ @Test public void backgroundAndInterruptionAreContentFree(){
+  assertEquals("background-disabled",SupportPolicy.event("Car view covered; session retained; background audio=false",100).optString("state"));
+  assertEquals("background-enabled",SupportPolicy.event("Car view covered; connected session retained; background audio=true",100).optString("state"));
+  assertEquals("interruption-start",SupportPolicy.event("Audio mode interruption started",100).optString("state"));
+  assertEquals("resume-expired",SupportPolicy.event("Call resume expired; manual playback remains available",100).optString("state"));
+  assertNull(SupportPolicy.event("Call resume intent=true secret",100));
+  assertEquals("0.1.66",SupportPolicy.event("Process started; version=0.1.66",100).optString("version"));
+ }
+ @Test public void mediaIncludesOnlyObservedSafeFields(){
+  JSONObject e=SupportPolicy.event("Playback source=car instance=3 visible=false {\"playing\":true,\"muted\":false,\"resumeWanted\":true,\"fullscreen\":true,\"performance\":{\"loads\":2,\"waiting\":1,\"stalled\":0},\"url\":\"secret\"}",100);
+  assertTrue(e.optBoolean("resumeWanted"));assertFalse(e.optBoolean("visible"));assertEquals(2,e.optInt("loads"));assertFalse(e.toString().contains("secret"));
+  e=SupportPolicy.event("car media=playing time=4 ready=4 frames=2 engine=ts code=0",100);assertEquals("car",e.optString("source"));assertEquals("ts",e.optString("engine"));
+ }
 }
