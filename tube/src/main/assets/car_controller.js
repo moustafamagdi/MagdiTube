@@ -9,7 +9,7 @@
  const matches=(t,d,id)=>!revoked&&t===documentToken&&d===documentId&&!!d&&id===(identity()?.id||'');
  // Promote only the selected player (including its controls), never unrelated containers. Keep
  // the media element in place: reparenting it can detach Chromium's video surface.
- let fullscreenVideo=null,fullscreenStyle=null,fullscreenMarks=[],originalControls;
+ let fullscreenVideo=null,fullscreenStyle=null,fullscreenMarks=[],originalControls,inlineExit=false;
  const fullscreenPopups='bottom-sheet-container,ytm-menu-popup-renderer,ytm-bottom-sheet-renderer[role="dialog"],ytm-player-settings,ytm-popup-container,tp-yt-paper-dialog';
  function exitFullscreen(){
   window.MMVideoFit?.inline(false);
@@ -30,7 +30,7 @@
  }
  function enterFullscreen(){
   const v=video();if(!v||!v.isConnected||v.error||!v.readyState||document.fullscreenElement)return false;
-  exitFullscreen();fullscreenVideo=v;const root=playerRoot(v);
+  exitFullscreen();inlineExit=false;fullscreenVideo=v;const root=playerRoot(v);
   if(root===v){originalControls=v.getAttribute('controls');v.controls=true;}
   let inside=true;
   for(let el=v;el;el=el.parentElement){
@@ -58,6 +58,7 @@
   if(r.width<innerWidth-2||r.height<innerHeight-2||!root.contains(document.elementFromPoint(innerWidth/2,innerHeight/2))){exitFullscreen();return false;}
   window.MMVideoFit?.inline(true);return true;
  }
+ document.addEventListener?.('click',e=>{const button=e.target?.closest?.('button.fullscreen-icon,.ytp-fullscreen-button');if(!button||!fullscreenStyle||revoked||!fullscreenVideo||!playerRoot(fullscreenVideo).contains(button))return;e.preventDefault();e.stopImmediatePropagation();exitFullscreen();inlineExit=true;},true);
  window.__magdiCar={
   matches,
   audioAllowed:v=>!revoked&&v?.isConnected!==false&&document.querySelector('video')===v,
@@ -78,7 +79,7 @@
    else return false;
    return true;
   },
-  state(){const v=video(),art=identity(),error=!!v?.error,ended=!!v?.ended,paused=!!v?.paused,ready=v?v.readyState:0;return {...(window.MMVideoFit?.state()||{fullscreen:false,fill:false}),token:documentToken,document:documentId,id:art?.id||'',hasVideo:!!v,ready,playing:!!v&&!paused&&!ended&&!error,paused,ended,error,buffering:!!v&&!paused&&!ended&&!error&&(waiting||ready<3),replay:!!v&&Number.isFinite(v.duration)&&v.duration>0&&v.seekable.length>0&&v.seekable.start(0)===0,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&!error&&ready>0&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
+  state(){const v=video(),art=identity(),error=!!v?.error,ended=!!v?.ended,paused=!!v?.paused,ready=v?v.readyState:0;return {...(window.MMVideoFit?.state()||{fullscreen:false,fill:false}),inlineExit,token:documentToken,document:documentId,id:art?.id||'',hasVideo:!!v,ready,playing:!!v&&!paused&&!ended&&!error,paused,ended,error,buffering:!!v&&!paused&&!ended&&!error&&(waiting||ready<3),replay:!!v&&Number.isFinite(v.duration)&&v.duration>0&&v.seekable.length>0&&v.seekable.start(0)===0,time:v?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,seekable:!!v&&!error&&ready>0&&v.seekable.length>0,title:art?.title||'',next:!!art?.next,previous:!!art?.previous};}
  };
  const timer=setInterval(()=>{
   if(!wanted||revoked)return;

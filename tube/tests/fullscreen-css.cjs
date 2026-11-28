@@ -19,5 +19,8 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.evaluate(()=>window.__magdiCar.exitFullscreen());
   assert.equal(await page.locator('#unrelated').evaluate(e=>getComputedStyle(e).visibility),'visible');
  }
+ await page.evaluate(()=>{const b=document.createElement('button');b.className='fullscreen-icon';b.textContent='Fullscreen';b.style.cssText='position:absolute;top:10px;right:10px;z-index:2000';window.nativeEntries=0;b.onclick=()=>nativeEntries++;document.getElementById('player-container-id').append(b);window.__magdiCar.fullscreen(true,'test','doc','test-video',2);});
+ await page.locator('.fullscreen-icon').click();assert.equal(await page.evaluate(()=>nativeEntries),0);assert.equal(await page.evaluate(()=>window.MMVideoFit.state().fullscreen),false);assert.equal(await page.evaluate(()=>window.__magdiCar.state().inlineExit),true);
+ console.log('PASS: YouTube button exits inline fullscreen without invoking a second enter.');
  console.log('PASS: real CSS cascade; modern menu receives clicks over fullscreen player through repeated Full/Fill/exit cycles; unrelated and closed menus stay hidden');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

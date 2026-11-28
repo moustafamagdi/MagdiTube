@@ -22,6 +22,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
  private final ProgressBar progress;
  private final Button back;
  private final android.os.Handler timer=new android.os.Handler(android.os.Looper.getMainLooper());
+ private CarSeekControls carSeek;
  private final FullscreenControls fullscreenControls=new FullscreenControls(timer);
  @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){
   if(fullscreenControls!=null)fullscreenControls.beforeTouch(event);
@@ -102,6 +103,8 @@ public final class TubeView extends LinearLayout implements CarController.Player
      if(!result.equals("accepted")&&!result.equals("current-loading"))return;
      timer.removeCallbacks(expireObservation);timer.postDelayed(expireObservation,CarController.FRESH_MS);
      state.remove("controller");
+     if(control.optBoolean("inlineExit")&&controllerFullscreenRequested)hideControllerFullscreen();
+     if(carSeek!=null)carSeek.update(control);
      updateFitControl(control.optBoolean("fill"));
      if(result.equals("current-loading")||control.optBoolean("error")||!control.optBoolean("hasVideo")||control.optInt("ready")==0){clearPlaybackConsumers();return;}
      if(startFullscreen.shouldStart(StartFullscreen.enabled(getContext()),active&&!covered&&!phoneSuppressed&&searchPanel==null,control)&&fullscreen==null&&!controllerFullscreenRequested)toggleControllerFullscreen();
@@ -174,7 +177,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   if(phone){web.evaluateJavascript("window.__magdiPhoneEpoch="+CarController.epoch(),null);Diagnostics.event("Controller browsing loaded; car authentication not verified");return;}
   if(!active||"about:blank".equals(u)||!u.equals(v.getUrl()))return;
   if(!accountPage){documentReady=true;CarController.ready(TubeView.this);AdAssist.apply(v);
-   try{for(String asset:new String[]{"video_fit.js","playback_state.js","media_artwork.js","media_transport.js","car_controller.js","seek_preview.js","car_audio.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
+   try{for(String asset:new String[]{"video_fit.js","playback_state.js","media_artwork.js","media_transport.js","car_controller.js","car_audio.js","playback_sample.js"})v.evaluateJavascript(AdAssist.asset(c,asset),null);}catch(java.io.IOException e){Diagnostics.event("Playback tracking unavailable");}
    VideoSelection loaded=VideoSelection.parse(u);
    if(!selectionToken.isEmpty()&&loaded!=null&&loaded.id.equals(selectedId)&&CarController.accepts(TubeView.this,selectionEpoch,selectionRequest)){nativeMute(false);v.evaluateJavascript("window.__magdiCar&&window.__magdiCar.start("+org.json.JSONObject.quote(selectedId)+","+org.json.JSONObject.quote(selectionToken)+")",null);}
    if(selectionToken.isEmpty())nativeMute(false);
@@ -277,7 +280,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   fullscreenControls.clear();
   controllerFullscreenRequested=false;boolean restore=controllerFullscreen;controllerFullscreen=false;
   View exit=content.findViewWithTag("controller-fullscreen-exit");if(exit!=null)content.removeView(exit);
-  View fit=content.findViewWithTag("controller-fullscreen-exit-fit");if(fit!=null)content.removeView(fit);
+  View fit=content.findViewWithTag("controller-fullscreen-exit-fit");if(fit!=null)content.removeView(fit);View seek=content.findViewWithTag("controller-fullscreen-exit-seek");if(seek!=null)content.removeView(seek);carSeek=null;
   web.evaluateJavascript("window.__magdiCar?.exitFullscreen()",null);
   if(restore)restoreChildren();Diagnostics.event("Controller fullscreen exited");
  }
@@ -338,7 +341,8 @@ public final class TubeView extends LinearLayout implements CarController.Player
   FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);p.leftMargin=dp(2);exit.setTranslationY(-dp(26));parent.addView(exit,p);exit.setTag(tag);exit.setOnClickListener(v->onExit.run());
   ImageButton fit=new ImageButton(getContext());fit.setImageResource(R.drawable.ic_picture_fill);fit.setBackgroundResource(R.drawable.fullscreen_close_background);fit.setPadding(dp(14),dp(14),dp(14),dp(14));fit.setScaleType(ImageView.ScaleType.FIT_CENTER);fit.setElevation(0);fit.setStateListAnimator(null);fit.setContentDescription(ar?"ملء الشاشة مع قص الأطراف":"Fill screen (crop edges)");fit.setTag(tag+"-fit");FrameLayout.LayoutParams fp=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER_VERTICAL|Gravity.LEFT);fp.leftMargin=dp(2);fit.setTranslationY(dp(26));parent.addView(fit,fp);
   fit.setOnClickListener(v->{org.json.JSONObject state=CarController.state().optJSONObject("playback");if(state!=null)commandController("fill",state.optBoolean("fill")?0:1,CarController.epoch(),CarController.request());});
-  fullscreenControls.bind(exit,fit);
+  carSeek=new CarSeekControls(getContext(),(action,value)->commandController(action,value,CarController.epoch(),CarController.request()));carSeek.setTag(tag+"-seek");FrameLayout.LayoutParams sp=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);sp.leftMargin=dp(60);sp.rightMargin=dp(60);sp.bottomMargin=dp(46);parent.addView(carSeek,sp);carSeek.update(CarController.state().optJSONObject("playback"));
+  fullscreenControls.bind(exit,fit,carSeek);
  }
  private void showFullscreen(View view,WebChromeClient.CustomViewCallback callback){
   // YouTube does not know about our inline car fullscreen. Its next fullscreen
@@ -357,7 +361,7 @@ public final class TubeView extends LinearLayout implements CarController.Player
   addFullscreenExit(fullscreen,"native-fullscreen-exit",this::hideFullscreen);
   content.addView(fullscreen,new FrameLayout.LayoutParams(-1,-1));if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null){controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(android.view.WindowInsets.Type.systemBars());}}Diagnostics.event("Fullscreen entered");
  }
- private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;startFullscreen.manual(CarController.state().optJSONObject("playback"));fullscreenControls.clear();FrameLayout frame=fullscreen;fullscreen=null;content.removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
+ private void hideFullscreen(){timer.removeCallbacks(fullscreenReturn);if(fullscreen==null)return;startFullscreen.manual(CarController.state().optJSONObject("playback"));fullscreenControls.clear();carSeek=null;FrameLayout frame=fullscreen;fullscreen=null;content.removeView(frame);frame.removeAllViews();restoreChildren();if(phone){android.view.WindowInsetsController controller=((android.app.Activity)getContext()).getWindow().getInsetsController();if(controller!=null)controller.show(android.view.WindowInsets.Type.systemBars());}WebChromeClient.CustomViewCallback cb=fullscreenCallback;fullscreenCallback=null;if(cb!=null)cb.onCustomViewHidden();Diagnostics.event("Fullscreen exited");}
  private void hideSearch(){if(searchPanel==null)return;content.removeView(searchPanel);searchPanel=null;restoreChildren();}
  private Button largeActionButton(String text,String description,int minWidth){Button b=button(text,description);b.setTextSize(18);b.setMinWidth(dp(minWidth));b.setMinimumWidth(dp(minWidth));b.setPadding(dp(20),0,dp(20),0);return b;}
  private void showSearch(){
