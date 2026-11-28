@@ -61,13 +61,13 @@ public final class TubeView extends LinearLayout implements CarController.Player
   Diagnostics.event("Controller observation="+result); // No content, identifiers or tokens.
  }
  @Override public void onWindowFocusChanged(boolean focused){
-  if(!focused&&web!=null&&fullscreen!=null&&background)coverPlayback();
+  if(!focused&&web!=null&&keepCarMediaVisible())coverPlayback();
   super.onWindowFocusChanged(focused);
   if(!phone)CarUiDiagnostics.event(focused?"focus-gained":"focus-lost");
   if(focused&&web!=null){schedulePictureRefresh();if(fullscreen!=null)scheduleFullscreenReturn();}
  }
  @Override protected void onWindowVisibilityChanged(int visibility){
-  if(visibility!=VISIBLE&&web!=null&&fullscreen!=null&&background)coverPlayback();
+  if(visibility!=VISIBLE&&web!=null&&keepCarMediaVisible())coverPlayback();
   super.onWindowVisibilityChanged(visibility);
   if(!phone)CarUiDiagnostics.event(visibility==VISIBLE?"window-visible":"window-hidden");
   if(visibility==VISIBLE&&web!=null&&fullscreen!=null)scheduleFullscreenReturn();
@@ -137,10 +137,16 @@ public final class TubeView extends LinearLayout implements CarController.Player
  addView(bar,new LinearLayout.LayoutParams(-1,dp(52)));
  progress=new ProgressBar(c,null,android.R.attr.progressBarStyleHorizontal);progress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff45dfcc));addView(progress,new LinearLayout.LayoutParams(-1,dp(2)));
  status=new TextView(c);status.setTextColor(0xffffcf8a);status.setPadding(dp(12),dp(6),dp(12),dp(6));setContentVisibility(status,GONE);addView(status);
- web=new WebView(c){@Override protected void onWindowVisibilityChanged(int visibility){
+ web=new WebView(c){@Override public void onVisibilityAggregated(boolean visible){
+ // Modern WebView also receives aggregated visibility, independently of window visibility.
+ boolean retain=keepCarMediaVisible();
+ if(!visible&&retain)coverPlayback();
+ super.onVisibilityAggregated(visible||retain);
+ }@Override protected void onWindowVisibilityChanged(int visibility){
  // Preserve the existing media document during a temporary host cover (for example reverse camera).
- if(visibility!=View.VISIBLE&&background&&!closed)coverPlayback();
- super.onWindowVisibilityChanged(background&&!closed&&!accountPage&&!phoneSuppressed?View.VISIBLE:visibility);
+ boolean retain=keepCarMediaVisible();
+ if(visibility!=View.VISIBLE&&retain)coverPlayback();
+ super.onWindowVisibilityChanged(retain?View.VISIBLE:visibility);
  }};if(phone)phoneSafe=ControllerCookies.prepare(web);web.setBackgroundColor(Color.BLACK);content=new FrameLayout(c);content.addView(web,new FrameLayout.LayoutParams(-1,-1));addView(content,new LinearLayout.LayoutParams(-1,0,1));
  CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
  web.getSettings().setJavaScriptEnabled(true);web.getSettings().setDomStorageEnabled(true);
@@ -193,11 +199,11 @@ public final class TubeView extends LinearLayout implements CarController.Player
  Button account=button(ar?"الحساب":"Account",ar?"تسجيل YouTube التجريبي":"Experimental YouTube sign-in");
  Button ads=button(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"),ar?"منع الإعلانات التجريبي":"Experimental ad blocking");
  Button audio=button(ar?"صوت الخلفية":"Background audio",ar?"تشغيل أو إيقاف صوت الخلفية":"Toggle background audio");
- audio.setOnClickListener(v->{background=!background;c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
+ audio.setOnClickListener(v->{background=!c.getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);c.getSharedPreferences("tube",0).edit().putBoolean("backgroundAudio",background).apply();if(!background)PlaybackService.release(this);Toast.makeText(c,background?(ar?"صوت الخلفية يعمل":"Background audio ON"):(ar?"صوت الخلفية متوقف":"Background audio OFF"),Toast.LENGTH_SHORT).show();});
  Button logs=button(ar?"الدعم والتشخيص":"Support & diagnostics",ar?"إرسال تقرير دعم":"Send a support report");
  Button setup=button(ar?"التثبيت والتحديث عبر MM Auto":"Installation & updates — MM Auto",ar?"فتح مساعد التثبيت":"Open installation help");
  setup.setOnClickListener(v->c.startActivity(new android.content.Intent(c,InstallSetupActivity.class)));
- more.setOnClickListener(v->{PopupMenu menu=new PopupMenu(c,more);Button[] options={account,logs};for(int i=0;i<options.length;i++)menu.getMenu().add(0,i,i,options[i].getText());menu.getMenu().add(0,4,4,ar?"خيارات متقدمة":"Advanced options");menu.getMenu().add(0,5,5,ar?"بدء الفيديو بملء الشاشة على العربية":"Start videos fullscreen on the car").setCheckable(true).setChecked(StartFullscreen.enabled(c));menu.setOnMenuItemClickListener(item->{if(item.getItemId()==5){StartFullscreen.setEnabled(c,!item.isChecked());Toast.makeText(c,ar?"يُطبّق على الفيديو التالي على العربية":"Applies to the next video on the car",Toast.LENGTH_SHORT).show();return true;}if(item.getItemId()==4){PopupMenu advanced=new PopupMenu(c,more);Button[] extra={reload,ads,audio,setup};for(int i=0;i<extra.length;i++)advanced.getMenu().add(0,i,i,extra[i].getText());advanced.getMenu().add(0,4,4,ar?"إعادة تهيئة الشاشة":"Reset browsing screen");advanced.setOnMenuItemClickListener(choice->{if(choice.getItemId()==4)reload.performLongClick();else extra[choice.getItemId()].performClick();return true;});advanced.show();}else options[item.getItemId()].performClick();return true;});menu.show();});
+ more.setOnClickListener(v->{PopupMenu menu=new PopupMenu(c,more);Button[] options={account,logs};for(int i=0;i<options.length;i++)menu.getMenu().add(0,i,i,options[i].getText());menu.getMenu().add(0,4,4,ar?"خيارات متقدمة":"Advanced options");menu.getMenu().add(0,5,5,ar?"بدء الفيديو بملء الشاشة على العربية":"Start videos fullscreen on the car").setCheckable(true).setChecked(StartFullscreen.enabled(c));menu.setOnMenuItemClickListener(item->{if(item.getItemId()==5){StartFullscreen.setEnabled(c,!item.isChecked());Toast.makeText(c,ar?"يُطبّق على الفيديو التالي على العربية":"Applies to the next video on the car",Toast.LENGTH_SHORT).show();return true;}if(item.getItemId()==4){PopupMenu advanced=new PopupMenu(c,more);Button[] extra={reload,ads,audio,setup};for(int i=0;i<extra.length;i++)advanced.getMenu().add(0,i,i,extra[i].getText());advanced.getMenu().findItem(2).setCheckable(true).setChecked(c.getSharedPreferences("tube",0).getBoolean("backgroundAudio",true));advanced.getMenu().add(0,4,4,ar?"إعادة تهيئة الشاشة":"Reset browsing screen");advanced.setOnMenuItemClickListener(choice->{if(choice.getItemId()==4)reload.performLongClick();else extra[choice.getItemId()].performClick();return true;});advanced.show();}else options[item.getItemId()].performClick();return true;});menu.show();});
  account.setOnClickListener(v->new android.app.AlertDialog.Builder(c).setTitle(ar?"تسجيل دخول تجريبي":"Experimental sign-in").setMessage(ar?"تدخل بياناتك في صفحة Google. قد ترفض Google المتصفح المضمّن. لا نغيّر هوية المتصفح ولا نقرأ كلمات المرور. بعد النجاح افتح الاشتراكات، ثم تحديث على شاشة السيارة. لا تمسح بيانات التطبيق إن أردت الاحتفاظ بالجلسة.":"Enter your credentials only on Google's page. Google may reject this embedded browser. We do not change browser identity or read passwords. After success, check Subscriptions, then Reload on the car. Clearing app data removes the session.").setNegativeButton(ar?"إلغاء":"Cancel",null).setPositiveButton(ar?"متابعة":"Continue",(d,w)->{Diagnostics.event("Account flow opened on phone");web.loadUrl("https://m.youtube.com/signin");}).show());
  ads.setOnClickListener(v->{AdAssist.toggle(c);AdAssist.configure(web);ads.setText(AdAssist.enabled(c)?(ar?"منع الإعلانات: يعمل":"Ads block: ON"):(ar?"منع الإعلانات: متوقف":"Ads block: OFF"));if(!accountPage){AdAssist.apply(web);web.reload();}Toast.makeText(c,ar?"حدّث صفحة السيارة لتطبيق التغيير. لا يضمن منع جميع الإعلانات.":"Reload the car page to apply. Experimental; complete blocking is not guaranteed.",Toast.LENGTH_LONG).show();});
  logs.setOnClickListener(v->Diagnostics.open((android.app.Activity)c));
@@ -215,7 +221,8 @@ public final class TubeView extends LinearLayout implements CarController.Player
  static boolean allowed(Uri u){String h=u.getHost();return "https".equals(u.getScheme())&&u.getUserInfo()==null&&(u.getPort()==-1||u.getPort()==443)&&h!=null&&(h.equals("youtube.com")||h.endsWith(".youtube.com")||h.equals("youtu.be"));}
 
  // A covered host is still connected: keep its document, polling and controller lease.
- void cover(){if(phone||closed||!active||covered)return;coverPlayback();covered=true;cancelPictureRefresh();CookiePersistence.request();if(!background){pauseMedia();web.onPause();}Diagnostics.event("Car view covered; session retained; background audio="+background);}
+ boolean keepCarMediaVisible(){background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);return !phone&&!closed&&active&&background&&!accountPage&&!phoneSuppressed&&CarPlaybackSession.connected();}
+ void cover(){if(phone||closed||!active||covered)return;keepCarMediaVisible();coverPlayback();covered=true;cancelPictureRefresh();CookiePersistence.request();if(!background){pauseMedia();web.onPause();}Diagnostics.event("Car view covered; session retained; background audio="+background);}
  void pause(){if(phone&&controller!=null)controller.cancelLaunch();cancelPictureRefresh();active=false;covered=false;timer.removeCallbacks(controllerPoll);timer.removeCallbacks(sample);invalidateSample();CookiePersistence.request();if(!phone){CarController.detach(this);documentReady=false;}web.onPause();Diagnostics.event(phone?"Phone controller covered":"Car player unavailable; playback stopped");}
  void resume(){if(closed)return;background=getContext().getSharedPreferences("tube",0).getBoolean("backgroundAudio",true);boolean wasCovered=covered;covered=false;active=true;web.onResume();invalidateSample();sampleDue=0;timer.removeCallbacks(sample);
   if(phone){timer.removeCallbacks(controllerPoll);timer.post(controllerPoll);}else{CarController.attach(this);if(documentReady)CarController.ready(this);if(!wasCovered&&(!documentReady||"about:blank".equals(web.getUrl())))web.loadUrl("https://m.youtube.com/");timer.post(sample);}
